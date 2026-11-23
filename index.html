@@ -348,8 +348,8 @@ const C={
   CAL:'',
   ME:/ерназар|yernazar|karimovy/i,
   HERO:'42073b41-3ff7-8166-8f08-c3609486ffe2',
-  N:{quests:'quests',habits:'habits',ideas:'ideas',finds:'finds',reels:'reels',metrics:'metrics',hyp:'hyp',clients:'clients',shop:'shop',ach:'ach'},
-  GOAL:10000, GOAL_DATE:'2026-12-31'
+  N:{quests:'quests',habits:'habits',ideas:'ideas',finds:'finds',reels:'reels',quote:'quote',metrics:'metrics',hyp:'hyp',clients:'clients',shop:'shop',ach:'ach'},
+  GOAL:10000, GOAL_DATE:'2026-12-31', GOALS:[[3000,'2026-11-30'],[10000,'2026-12-31']]
 };
 const XP={'Мини':10,'Задача':25,'Большая':50,'Эпик':150,'Босс':300};
 const SPH=[['РАБота','Работа','#8FA8FF'],['Popularity блог','Блог','#FF8AC4'],['Бизнес ИИ','Бизнес','#5EE07A'],['Личная жизнь','Личное','#FFA45C']];
@@ -380,7 +380,7 @@ const LS={get(k,d){try{const v=localStorage.getItem('brain_'+k);return v==null?d
 
 /* ===== Состояние ===== */
 const S={view:'today',mode:new Date().getHours()>=17?'eve':'morn',work:'focus',mcp:null,sample:null,err:{},
-  cal:null,tasks:null,dec:null,prom:null,proj:null,quests:null,habits:null,ideas:null,finds:null,metrics:null,hyp:null,clients:null,shop:null,ach:null,reels:null,
+  cal:null,tasks:null,dec:null,prom:null,proj:null,quests:null,habits:null,ideas:null,finds:null,metrics:null,hyp:null,clients:null,shop:null,ach:null,reels:null,quote:null,
   ai:{},sheet:null,busy:{}};
 
 /* ===== Сервер (Apps Script) ===== */
@@ -401,9 +401,11 @@ const appendRow=(id,range,row)=>one({action:'sheet.append',book:book(id),sheet:r
 function normProps(pr){const o={};Object.keys(pr).forEach(k=>{let v=pr[k];const m=k.match(/^date:(.+):start$/);if(m)k=m[1];if(v==='__YES__')v=true;if(v==='__NO__')v=false;o[k]=v});return o}
 const nUpdate=(db,id,props)=>one({action:'notion.update',db,page:id,props:normProps(props)});
 const nCreate=(db,props)=>one({action:'notion.create',db,props:normProps(props)});
+const nUpd=(db,u,p)=>nUpdate(db,u,p),nNew=async(db,p)=>{const r=await nCreate(C.N[db],p);return r&&r.id};
 const MAP={
   quests:r=>({url:r.id,t:r['Квест'],s:r['Сфера'],k:r['Тип'],st:r['Статус'],due:r['Срок'],td:r['Сегодня']}),
-  habits:r=>({url:r.id,t:r['День'],d:r['Дата'],h1:r['Час на блог или бизнес'],h2:r['Вечерний итог и план']}),
+  habits:r=>({url:r.id,t:r['День'],d:r['Дата'],h1:r['Час на блог или бизнес'],h2:r['Вечерний итог и план'],sb:r['Шаг блог'],sz:r['Шаг бизнес']}),
+  quote:r=>({url:r.id,t:r['Цитата'],a:r['Автор'],why:r['Почему тебе'],d:r['Дата'],tag:r['Тема']}),
   ideas:r=>({url:r.id,t:r['Название'],kind:r['Вид'],topic:r['Тема'],st:r['Статус'],hook:r['Хук'],notes:r['Заметки'],src:r['Источник'],ref:r['Референс'],pub:r['Дата публикации']}),
   finds:r=>({url:r.id,t:r['Ролик'],a:r['Автор'],pl:r['Платформа'],link:r['Ссылка'],v:r['Просмотры'],x:r['Во сколько раз выше нормы'],why:r['Почему залетел'],hook:r['Хук'],adapt:r['Как адаптировать'],topic:r['Тема'],score:r['Оценка'],dec:r['Решение'],d:r['Дата']}),
   metrics:r=>({url:r.id,d:r['Дата'],n:r['Подписчики'],src:r['Источник']}),
@@ -453,7 +455,7 @@ function heroStats(){
   const by={};SPH.forEach(s=>by[s[0]]=0);let xp=0;
   q.forEach(x=>{const v=XP[x.k]||0;xp+=v;if(by[x.s]!=null)by[x.s]+=v});
   const hx=(S.habits||[]).reduce((a,h)=>a+(yes(h.h1)?5:0)+(yes(h.h2)?5:0),0);
-  xp+=hx;const spent=(S.shop||[]).filter(s=>yes(s.got)).reduce((a,s)=>a+(+s.price||0),0);
+  xp+=hx+bonusXP();const spent=(S.shop||[]).filter(s=>yes(s.got)).reduce((a,s)=>a+(+s.price||0),0);
   return {xp,lvl:Math.floor(xp/250)+1,prog:(xp%250)/250,coins:xp-spent,by,hx};
 }
 function followers(){const m=(S.metrics||[]).filter(x=>x.n!=null).sort((a,b)=>a.d<b.d?-1:1);return m}
@@ -496,16 +498,17 @@ function vToday(){
   const od=mine.filter(x=>overdue(x.dl));
   const promOd=(S.prom||[]).filter(p=>p.st!=='Сделано'&&p.due&&p.due<=t);
   const decOd=(S.dec||[]).filter(x=>x.st!=='Сделано'&&C.ME.test(x.who)&&x.due&&x.due<=t);
-  const top=(S.quests||[]).filter(q=>q.st!=='Готово'&&(yes(q.td)||(q.due&&q.due<=t))).sort((a,b)=>(yes(b.td)-yes(a.td))||((a.due||'9')<(b.due||'9')?-1:1));
+  const top=(S.quests||[]).filter(q=>q.st!=='Готово'&&(yes(q.td)||(q.due&&q.due<=t))).sort((a,b)=>(yes(b.td)-yes(a.td))||((a.due||'9')<(b.due||'9')?-1:1));const pick=ss=>top.find(q=>ss.includes(q.s));const top3=[pick(['РАБота']),pick(['Popularity блог']),pick(['Бизнес ИИ','Личная жизнь'])].filter(Boolean);
   const nowMs=Date.now();
   const greet=d.getHours()<12?'Доброе утро':d.getHours()<18?'Добрый день':'Добрый вечер';
   let h=head(greet+', Ерназар',`${WD[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]}`);
   h+=`<div class="seg rise"><button class="${S.mode==='morn'?'on':''}" data-act="mode" data-m="morn">Утро</button><button class="${S.mode==='eve'?'on':''}" data-act="mode" data-m="eve">Вечер</button></div>`;
+  h+=quoteCard();
   if(S.mode==='morn'){
     const odBody=loading('tasks')?wait:(od.length+promOd.length+decOd.length?od.map(x=>taskRow(x,{noOwner:1})).join('')+promOd.map(promRow).join('')+decOd.map(decRow).join(''):'<p class="empty">Ничего не горит 👌</p>');
     const meet=loading('cal')?wait:((S.cal||[]).length?(S.cal||[]).map((e,i)=>{const past=new Date(e.end.dateTime).getTime()<nowMs;const who=(e.attendees||[]).filter(a=>!a.self&&!a.resource).map(a=>(a.displayName||a.email.split('@')[0]).split(' ')[0]);const pr=(S.prom||[]).filter(p=>p.st!=='Сделано'&&p.who&&who.some(w=>p.who.toLowerCase().includes(w.toLowerCase())));
-      return `<div class="task" style="${past?'opacity:.45':''}"><div class="t"><span class="clamp2"><b style="font-weight:500">${hm(e.start.dateTime)}</b> · ${esc(e.summary||'Без названия')}</span><small class="clamp1">${who.length} участн.${pr.length?' · <span style="color:var(--blue)">обещаний: '+pr.length+'</span>':''}</small></div>${!past?aiBtn('prep','Подготовка',`data-i="${i}"`):''}</div>${pr.length?`<div style="padding:0 0 8px 0">${pr.map(p=>`<small style="display:block;color:var(--soft);font-size:12px">↳ ${esc(p.dir)}: ${esc(p.who)} — ${esc(p.what)}</small>`).join('')}</div>`:''}${aiOut('prep'+i)}`}).join(''):(S.err.cal?'':'<p class="empty">Встреч нет — время для фокуса.</p>'));
-    const topBody=loading('quests')?wait:(top.length?top.slice(0,3).map(questRow).join('')+(top.length>3?`<small class="sub" style="display:block;padding-top:8px">+${top.length-3} ещё на сегодня — выбери главные ★ во вкладке «Я»</small>`:''):'<p class="empty">Главные задачи не выбраны. Отметь ☆ у квестов во вкладке «Я» или вечером запланируй завтра.</p>');
+      return `<div class="task" style="${past?'opacity:.45':''}"><div class="t"><span class="clamp2"><b style="font-weight:500">${hm(e.start.dateTime)}</b> · ${esc(e.summary||'Без названия')}</span><small class="clamp1">${who.length} участн.${pr.length?' · <span style="color:var(--blue)">обещаний: '+pr.length+'</span>':''}</small></div>${!past?aiBtn('prep','Подготовка',`data-i="${i}"`):''}</div>${pr.length?`<div style="padding:0 0 8px 0">${pr.map(p=>`<small style="display:block;color:var(--soft);font-size:12px">↳ ${esc(p.dir)}: ${esc(p.who)} — ${esc(p.what)}</small>`).join('')}</div>`:''}${who.length?sumRow(e,i):''}${aiOut('prep'+i)}`}).join(''):(S.err.cal?'':'<p class="empty">Встреч нет — время для фокуса.</p>'));
+    const topBody=loading('quests')?wait:(top.length?(top3.length?top3.map(questRow).join(''):'<p class="empty">Отметь ★ по одному квесту: работа, блог, бизнес/личное.</p>')+(top.length>top3.length?`<small class="sub" style="display:block;padding-top:8px">+${top.length-top3.length} ещё на сегодня · по одной главной на сферу: работа, блог, бизнес/личное</small>`:''):'<p class="empty">Главные задачи не выбраны. Отметь ☆ у квестов во вкладке «Я» или вечером запланируй завтра.</p>');
     h+=`<div class="cols"><div>${card('🔥 Просрочено',odBody+errBox(['tasks','prom','dec']),`<span class="pill">${od.length+promOd.length+decOd.length}</span>`)}${card('🎯 3 главные задачи',topBody+errBox(['quests']),'',.05)}</div><div>${card('📅 Встречи сегодня',meet+errBox(['cal']),`<span class="pill">${(S.cal||[]).length}</span>`,.1)}${card('⏱ Мои задачи сервиса',loading('tasks')?wait:mine.filter(x=>!overdue(x.dl)).sort((a,b)=>(a.dl||'9')<(b.dl||'9')?-1:1).slice(0,6).map(x=>taskRow(x,{noOwner:1})).join('')||'<p class="empty">Пусто</p>','<button class="edit" data-act="go" data-v="work">Все →</button>',.15)}</div></div>`;
   }else{
     const closed=(S.tasks||[]).filter(x=>x.st==='Готово'&&fromRu(x.updated)===t);
@@ -514,7 +517,7 @@ function vToday(){
     const tm=S.tmr||['','',''];
     h+=`<div class="cols"><div>
     ${card('✅ Закрыто сегодня',(closed.length+qDone.length?closed.map(x=>taskRow(x,{noOwner:1})).join('')+qDone.map(questRow).join(''):'<p class="empty">Пока пусто. Отметь, что закрыл — это и есть итог дня.</p>'))}
-    ${card('🔁 Привычки',`<label class="task"><input type="checkbox" data-act="habit" data-k="h1" ${yes(hb.h1)?'checked':''}><span class="t">Час на блог или бизнес <small style="color:var(--muted)">+5 XP</small></span></label><label class="task"><input type="checkbox" data-act="habit" data-k="h2" ${yes(hb.h2)?'checked':''}><span class="t">Вечерний итог + план на завтра <small style="color:var(--muted)">+5 XP</small></span></label>`+errBox(['habits']),`<span class="pill">🔥 ${streak()} дн.</span>`,.05)}
+    ${card('🪜 Мини-шаги на вечер',stepRow('blog')+stepRow('biz')+`<label class="task"><input type="checkbox" data-act="habit" data-k="h2" ${yes(hb.h2)?'checked':''}><span class="t">Вечерний итог + план на завтра <small style="color:var(--muted)">+5 XP</small></span></label>`+errBox(['habits']),`<span class="pill">🔥 ${streak()} дн.</span>`,.05)}
     ${card('📝 Журнал работы',`<div class="chips">${[30,60,90,120].map(m=>`<button class="chip ${S.jMin===m?'on':''}" data-act="jMin" data-m="${m}">${m} мин</button>`).join('')}</div><div class="chips" style="margin-top:8px">${['Встреча','Анализ','ТЗ','Коммуникация','Отчёт'].map(m=>`<button class="chip ${S.jType===m?'on':''}" data-act="jType" data-m="${m}">${m}</button>`).join('')}</div><div class="inline"><input class="field" id="jWhat" placeholder="Что сделал и какая польза"><button class="btn" data-act="jAdd">+</button></div>`,'',.1)}
     </div><div>
     ${card('🤝 Договорённости дня',`<p class="sub" style="margin:0 0 8px">Надиктуй или вставь, о чём договорился. ИИ разложит на «я обещал / мне обещали» — ты проверишь и сохранишь в Обещания.</p><textarea class="field" id="agrText" placeholder="Марк пришлёт выгрузку до пятницы, я сделаю ТЗ по рейтингам к среде…" style="width:100%"></textarea><div class="inline">${aiBtn('agrParse','Разобрать')}</div>${agrPreview()}`,'',.1)}
@@ -536,8 +539,8 @@ function vWork(){
     const mine=tasks.filter(x=>myTask(x)&&open(x));
     const od=mine.filter(x=>overdue(x.dl)),week=mine.filter(x=>x.dl&&x.dl>=t&&x.dl<=wk),noDl=mine.filter(x=>!x.dl);
     const blk=tasks.filter(x=>open(x)&&(x.st==='Блокер'||x.block)&&(myTask(x)||C.ME.test(x.team)));
-    const lead=(S.proj||[]).filter(p=>p.mode==='Веду');
-    h+=`<div class="cols"><div>${card('🔥 Просрочено',loading('tasks')?wait:(od.map(x=>taskRow(x,{noOwner:1})).join('')||'<p class="empty">Нет</p>')+errBox(['tasks']),`<span class="pill">${od.length}</span>`)}${card('📆 На этой неделе',week.sort((a,b)=>a.dl<b.dl?-1:1).map(x=>taskRow(x,{noOwner:1})).join('')||'<p class="empty">Нет</p>','',.05)}${card('🧱 Блокеры',blk.map(x=>taskRow(x)+(x.block?`<small style="display:block;color:var(--red);font-size:12px;padding-bottom:8px">↳ ${esc(x.block)}</small>`:'')).join('')||'<p class="empty">Нет</p>','',.1)}</div><div>${card('⭐ Проекты «Веду»',lead.map(projRow).join('')||'<p class="empty">Нет</p>',`<span class="pill ${lead.length>4?'':'white'}">${lead.length} из 4</span>`,.1)}${card('📥 Без DL',noDl.map(x=>taskRow(x,{noOwner:1})).join('')||'<p class="empty">Нет</p>','',.15)}</div></div>`;
+    const lead=(S.proj||[]).filter(p=>p.mode==='Веду'&&p.st!=='Регулярно'),rit=(S.proj||[]).filter(p=>p.st==='Регулярно');
+    h+=`<div class="cols"><div>${card('🔥 Просрочено',loading('tasks')?wait:(od.map(x=>taskRow(x,{noOwner:1})).join('')||'<p class="empty">Нет</p>')+errBox(['tasks']),`<span class="pill">${od.length}</span>`)}${card('📆 На этой неделе',week.sort((a,b)=>a.dl<b.dl?-1:1).map(x=>taskRow(x,{noOwner:1})).join('')||'<p class="empty">Нет</p>','',.05)}${card('🧱 Блокеры',blk.map(x=>taskRow(x)+(x.block?`<small style="display:block;color:var(--red);font-size:12px;padding-bottom:8px">↳ ${esc(x.block)}</small>`:'')).join('')||'<p class="empty">Нет</p>','',.1)}</div><div>${rit.length?card('🔁 Ритуалы',rit.map(projRow).join(''),'<span class="pill">каждую неделю</span>',.08):''}${card('⭐ Проекты «Веду»',lead.map(projRow).join('')||'<p class="empty">Нет</p>',`<span class="pill ${lead.length>5?'':'white'}">${lead.length} из 5</span>`,.1)}${card('📥 Без DL',noDl.map(x=>taskRow(x,{noOwner:1})).join('')||'<p class="empty">Нет</p>','',.15)}</div></div>`;
   }else if(S.work==='proj'){
     const groups=['Веду','Участвую','Наблюдаю'];
     h+=loading('proj')?wait:groups.map((g,i)=>card(g,(S.proj||[]).filter(p=>p.mode===g).map(projRow).join('')||'<p class="empty">Нет</p>',`<span class="pill">${(S.proj||[]).filter(p=>p.mode===g).length}</span>`,i*.05)).join('')+errBox(['proj']);
@@ -569,13 +572,13 @@ function projRow(p){const ts=(S.tasks||[]).filter(t=>p.tids.includes(t.id));cons
 function vBlog(){
   let h=head('Блог','@krmovy · цель 10 000 к 31.12');
   const m=followers(),last=m.length?m[m.length-1]:null,n=last?+last.n:0;
-  const days=Math.max(1,Math.round((new Date(C.GOAL_DATE)-new Date(today()))/864e5));
-  const need=Math.max(0,Math.ceil((C.GOAL-n)/days));
+  const G=goalNow(n),days=Math.max(1,Math.round((new Date(G[1])-new Date(today()))/864e5));
+  const need=Math.max(0,Math.ceil((G[0]-n)/days));
   const last14=m.slice(-14),mx=Math.max(...last14.map(x=>+x.n),1),mn=Math.min(...last14.map(x=>+x.n),0);
   const ideas=S.ideas||[];
   const finds=(S.finds||[]).filter(f=>f.dec==='Новая'||!f.dec);
   h+=`<div class="cols"><div>`;
-  h+=card('📈 Путь к 10 000',`<div class="row" style="align-items:flex-end"><div><div class="big">${n?n.toLocaleString('ru'):'—'}</div><div class="sub">${last?'на '+esc(short(last.d))+(last.src==='Авто'?' · авто':''):''}</div></div><div class="boxNum"><small>нужно в день</small><b>+${need}</b></div></div><div class="bar thin" style="margin-top:12px"><i style="width:${Math.min(100,n/C.GOAL*100)}%"></i></div>${last14.length>1?`<div class="wbars" style="margin-top:14px">${last14.slice(-7).map(x=>`<div><div class="b"><i style="height:${Math.max(6,((+x.n-mn)/(mx-mn||1))*100)}%"></i></div><small>${esc(short(x.d).slice(0,2))}</small></div>`).join('')}</div>`:''}<div class="inline"><input class="field" id="folN" type="number" placeholder="Подписчиков сейчас"><button class="btn ghost" data-act="folAdd">Записать</button></div>`+errBox(['metrics']));
+  h+=card('📈 Путь к '+G[0].toLocaleString('ru')+' · до '+short(G[1]),`<div class="row" style="align-items:flex-end"><div><div class="big">${n?n.toLocaleString('ru'):'—'}</div><div class="sub">${last?'на '+esc(short(last.d))+(last.src==='Авто'?' · авто':''):''}</div></div><div class="boxNum"><small>нужно в день</small><b>+${need}</b></div></div><div class="bar thin" style="margin-top:12px"><i style="width:${Math.min(100,n/G[0]*100)}%"></i></div>${last14.length>1?`<div class="wbars" style="margin-top:14px">${last14.slice(-7).map(x=>`<div><div class="b"><i style="height:${Math.max(6,((+x.n-mn)/(mx-mn||1))*100)}%"></i></div><small>${esc(short(x.d).slice(0,2))}</small></div>`).join('')}</div>`:''}<div class="inline"><input class="field" id="folN" type="number" placeholder="Подписчиков сейчас"><button class="btn ghost" data-act="folAdd">Записать</button></div>`+errBox(['metrics']));
   h+=blogHitsTeaser();
   h+=`</div><div>`;
   const conv=IDEA_ST.map(s=>[s,ideas.filter(i=>i.st===s).length]);
@@ -588,12 +591,12 @@ function vBlog(){
 
 /* ===== 🔥 Залёты ===== */
 // Мои ролики: медиана, ×к медиане, залёт = ×2 и выше. Всё считается здесь, в базе только сырые цифры.
-const HIT_X=2;
+const HIT_X=2,HIT_V=10000;
 function reelStats(){
   const all=(S.reels||[]).filter(r=>+r.v>0).map(r=>({...r,v:+r.v})).sort((a,b)=>(a.d||'')<(b.d||'')?1:-1);
   const from=addDays(today(),-90),recent=all.filter(r=>r.d&&r.d>=from),base=(recent.length>=5?recent:all).map(r=>r.v).sort((a,b)=>a-b);
   const med=base.length?(base.length%2?base[(base.length-1)/2]:(base[base.length/2-1]+base[base.length/2])/2):0;
-  all.forEach(r=>{r.x=med?r.v/med:0;r.hit=r.x>=HIT_X});
+  all.forEach(r=>{r.x=med?r.v/med:0;r.hit=r.v>=HIT_V});
   const hits=all.filter(r=>r.hit).sort((a,b)=>b.x-a.x);
   const best=all.slice().sort((a,b)=>b.v-a.v)[0]||null;
   const last30=all.filter(r=>r.d&&r.d>=addDays(today(),-30));
@@ -624,7 +627,7 @@ function vHits(){
   const b=rs.best;
   const hero=loading('reels')?wait:(b?`<div class="row" style="align-items:flex-end"><div style="min-width:0"><small class="sub">🏆 Твой рекорд</small><div class="big hotNum">${fmtN(b.v)}</div><div class="sub clamp1">${esc(b.t||'')}${b.d?' · '+esc(short(b.d)):''}</div></div><div class="boxNum"><small>к медиане</small><b>×${b.x.toFixed(1).replace('.0','')}</b></div></div>
     <div class="grid2" style="margin-top:12px"><div class="tile"><small class="sub">Залётов за 30 дн.</small><div class="mid">${rs.hits30}</div></div><div class="tile"><small class="sub">Просмотров за 30 дн.</small><div class="mid">${fmtN(rs.views30)}</div></div><div class="tile"><small class="sub">Обычный ролик</small><div class="mid">${fmtN(rs.med)}</div></div><div class="tile"><small class="sub">Залетает</small><div class="mid">${rs.rate?'1 из '+rs.rate:'—'}</div></div></div>
-    <p class="motiv">${rs.hits.length?`У тебя уже ${rs.hits.length} ${rs.hits.length===1?'залёт':rs.hits.length<5?'залёта':'залётов'} ×${HIT_X}+. ${rs.rate?'Примерно каждый '+rs.rate+'-й ролик выстреливает — следующий залёт ближе, чем кажется. Снимай.':''}`:'Залёт = ролик ×'+HIT_X+' к твоей норме. Каждый новый ролик — ещё один билет.'}</p>`
+    <p class="motiv">${rs.hits.length?`У тебя уже ${rs.hits.length} ${rs.hits.length===1?'залёт':rs.hits.length<5?'залёта':'залётов'} больше 10K. ${rs.rate?'Примерно каждый '+rs.rate+'-й ролик выстреливает — следующий залёт ближе, чем кажется. Снимай.':''}`:'Залёт = ролик больше 10K просмотров (+100 XP). Каждый новый ролик — ещё один билет.'}</p>`
     :`<p class="empty">Твои ролики появятся завтра в 08:10 — их подтянет задача из vidIQ. Или добавь залёт руками ниже.</p>`)+errBox(['reels']);
   h+=`<div class="cols"><div>`;
   h+=card('🔥 Мои залёты',hero,`<span class="pill white">${rs.hits.length}</span>`);
@@ -642,12 +645,74 @@ function blogHitsTeaser(){
   return card('🔥 Залёты',`<div class="row"><div><div class="mid hotNum">${b?fmtN(b.v):'—'}</div><small class="sub">рекорд · залётов ${rs.hits.length} · новых находок ${nf}</small></div><button class="edit" data-act="go" data-v="hits">Открыть →</button></div>`,'',.05);
 }
 
+
+/* ===== Мини-шаги, цели, цитата дня (решения 24.11) ===== */
+// Лесенки по 10–15 минут: после работы легко начать. Прогресс — счётчики «Шаг блог» / «Шаг бизнес» в базе Привычки.
+const LADDER={
+  blog:[['🔎','Посмотреть находки ресерчера, выбрать 1 идею',10],['🪝','Написать 3 варианта хука',10],['✍️','Прописать сценарий',15],['🎬','Раскадровка: что в кадре',10],['📱','Снять ролик (2 дубля)',15],['✂️','Смонтировать в CapCut',15],['🚀','Выложить + описание',10],['📊','Через сутки разобрать цифры',10]],
+  biz:[['🎯','Оффер одной фразой: кому, что, какой результат',15],['💵','Цена и 2 пакета',10],['🎞','Сделать 1 пример ИИ-видео',15],['📇','Список 20 компаний Алматы',15],['✉️','Шаблон первого сообщения',10],['📨','Написать 5 компаниям',15],['📨','Написать ещё 5 компаниям',15],['💬','Ответить всем, кто откликнулся',10],['📞','Показать пример на созвоне или в переписке',15],['🧾','Отправить КП с ценой',10],['🔁','Напомнить тем, кто молчит',10],['🏆','Получить первую оплату',15]]
+};
+const stepTot=k=>Math.max(0,...(S.habits||[]).map(h=>+(k==='blog'?h.sb:h.sz)||0));
+const stepNow=k=>{const L=LADDER[k],t=stepTot(k);return L[k==='blog'?t%L.length:Math.min(t,L.length-1)]};
+async function habitPatch(props){
+  const t=today();let r=(S.habits||[]).find(x=>x.d===t);
+  if(r&&r.url){await nUpd('habits',r.url,props);return r}
+  const all=Object.assign({'День':t,'date:Дата:start':t,'Герой':[C.HERO],'Шаг блог':stepTot('blog'),'Шаг бизнес':stepTot('biz')},props);
+  const u=await nNew('habits',all);r={url:u,d:t,sb:all['Шаг блог'],sz:all['Шаг бизнес']};(S.habits=S.habits||[]).unshift(r);return r;
+}
+async function stepDone(k){
+  const n=stepTot(k)+1,key=k==='blog'?'sb':'sz';
+  try{const r=await habitPatch({[k==='blog'?'Шаг блог':'Шаг бизнес']:n,'Час на блог или бизнес':'__YES__'});r[key]=n;r.h1='__YES__';
+    toast(`+5 XP · дальше: ${stepNow(k)[1]}`)}catch(e){toast(errMsg(e))}
+  render();
+}
+function stepRow(k){
+  const L=LADDER[k],t=stepTot(k),fin=k==='biz'&&t>=L.length,s=stepNow(k);
+  const meta=k==='blog'?`Блог · шаг ${t%L.length+1}/${L.length}`:`Бизнес · к первой оплате ${Math.min(t,L.length)}/${L.length}`;
+  return `<div class="task"><div class="t"><span class="clamp2">${s[0]} ${esc(s[1])}</span><small class="clamp1">${meta} · ${s[2]} мин · +5 XP</small></div>${fin?'<span class="pill">🏆</span>':`<button class="btn sm" data-act="stepGo" data-k="${k}">▶ ${s[2]} мин</button><button class="more" data-act="stepDone" data-k="${k}" title="Сделал">✓</button>`}</div>`;
+}
+// Бонус XP: шаги +5, залёт >10K +100, выложенный ролик +10
+function bonusXP(){return (stepTot('blog')+stepTot('biz'))*5+reelStats().hits.length*100+(S.ideas||[]).filter(i=>i.st==='Выложено').length*10}
+const goalNow=n=>C.GOALS.find(g=>n<g[0])||C.GOALS[C.GOALS.length-1];
+function bizGoalCard(){
+  const L=LADDER.biz,t=Math.min(stepTot('biz'),L.length),m=today().slice(0,7),paid=(S.clients||[]).filter(c=>c.st==='Оплатил');
+  const month=paid.filter(c=>(c.d||'').slice(0,7)===m).reduce((a,c)=>a+(+c.sum||0),0),first=paid.length>0;
+  return card('🏆 Цели бизнеса',`<div class="lbl" style="margin:0">Босс 1 · первая оплата</div><div class="row"><div class="mid">${first?'✅ есть':t+' / '+L.length}</div><small class="sub">${first?'кейс получен':'шагов пройдено'}</small></div><div class="bar thin" style="margin-top:8px"><i style="width:${first?100:t/L.length*100}%"></i></div>${first?'':`<small class="sub" style="display:block;margin-top:8px">Следующий шаг: ${esc(stepNow('biz')[1])} (${stepNow('biz')[2]} мин)</small>`}<div class="lbl" style="margin:14px 0 0">Главная цель · 500 000 ₸ в месяц</div><div class="row"><div class="mid">${month.toLocaleString('ru')} ₸</div><small class="sub">в этом месяце</small></div><div class="bar thin" style="margin-top:8px"><i style="width:${Math.min(100,month/5000)}%"></i></div>`);
+}
+// Цитата дня: из базы «💬 Цитата дня» (подбирает утренняя задача под твои задачи), иначе — запасной список реальных цитат
+const QUOTES=[
+  ['Дисциплина','Мы — то, что мы постоянно делаем. Совершенство, следовательно, не действие, а привычка.','Уилл Дюрант'],
+  ['Дисциплина','Успех — это сумма небольших усилий, повторяемых изо дня в день.','Роберт Кольер'],
+  ['Дисциплина','Дисциплина — это мост между целями и достижениями.','Джим Рон'],
+  ['Смелость','Путь в тысячу ли начинается с первого шага.','Лао-цзы'],
+  ['Смелость','Знать недостаточно, нужно применять. Хотеть недостаточно, нужно делать.','Иоганн Вольфганг Гёте'],
+  ['Смелость','Мы чаще страдаем в воображении, чем в действительности.','Сенека'],
+  ['Фокус','Фокус — это умение говорить «нет».','Стив Джобс'],
+  ['Фокус','Жизнь не коротка — это мы делаем её короткой, теряя время.','Сенека'],
+  ['Творчество','Нельзя ждать вдохновения. За ним нужно гнаться с дубинкой.','Джек Лондон'],
+  ['Творчество','Единственный способ делать великую работу — любить то, что делаешь.','Стив Джобс'],
+  ['Терпение','Соединить точки, глядя вперёд, нельзя — только оглядываясь назад. Верь, что они соединятся.','Стив Джобс'],
+  ['Терпение','У кого есть «зачем» жить, тот выдержит почти любое «как».','Фридрих Ницше']
+];
+function quoteToday(){
+  const t=today(),q=(S.quote||[]).find(x=>x.d===t);
+  if(q&&q.t)return {t:q.t,a:q.a,why:q.why,tag:q.tag};
+  const od=(S.tasks||[]).filter(x=>myTask(x)&&open(x)&&overdue(x.dl)).length,blog=(S.quests||[]).some(x=>yes(x.td)&&x.s==='Popularity блог'&&x.st!=='Готово');
+  const tag=S.mode==='eve'?'Дисциплина':od>=3?'Фокус':blog?'Творчество':'Смелость';
+  const why={Дисциплина:`Сегодня хватит одного шага на 10–15 минут: «${stepNow('blog')[1]}». Серия держится на маленьком.`,Фокус:`У тебя ${od} просроченных — выбери одну и закрой её первой.`,Творчество:'В плане ролик — не жди настроения, включи камеру.',Смелость:'Начни с самого лёгкого шага — дальше пойдёт.'}[tag];
+  const pool=QUOTES.filter(x=>x[0]===tag),d=new Date();const x=pool[(d.getDate()+d.getMonth())%pool.length];
+  return {t:x[1],a:x[2],why,tag};
+}
+function quoteCard(){const q=quoteToday();return `<section class="card quote rise" style="--d:.04s"><span class="qm">”</span><blockquote>${esc(q.t)}</blockquote><div class="who" style="margin-top:8px">— ${esc(q.a||'')}</div>${q.why?`<div class="why" style="margin-top:10px">${esc(q.why)}</div>`:''}</section>`}
+function sumRow(e,i){const end=new Date(e.end.dateTime),to=new Date(end.getTime()+15*60000);return `<div class="task" style="padding-left:12px;border-top-style:dashed"><div class="t"><span class="clamp1">📝 ${hm(end)}–${hm(to)} · резюме встречи</span><small class="clamp1">Итоги → Решения и Обещания</small></div><button class="edit" data-act="sumFor" data-i="${i}">Резюме</button></div>`}
+
 /* ===== ⚒️ Бизнес ===== */
 function vBiz(){
   let h=head('Бизнес','Лаборатория гипотез и доп. доход');
   const hy=S.hyp||[],cl=S.clients||[];
   const income=hy.reduce((a,x)=>a+(+x.inc||0),0)+cl.filter(c=>c.st==='Оплатил').reduce((a,c)=>a+(+c.sum||0),0);
   h+=`<div class="cols"><div>`;
+  h+=bizGoalCard();
   h+=card('💰 Доход','<div class="big">'+income.toLocaleString('ru')+' ₸</div><div class="sub">гипотезы + оплатившие клиенты</div>');
   h+=card('🧪 Гипотезы',`<div class="inline" style="margin-top:0"><input class="field" id="hypT" placeholder="Гипотеза: если …, то …"><button class="btn" data-act="hypAdd">+</button></div>`+(loading('hyp')?wait:hy.sort((a,b)=>HYP_ST.indexOf(a.st)-HYP_ST.indexOf(b.st)).map(x=>`<div class="task"><div class="t"><span class="clamp2">${esc(x.t)}</span><small class="clamp1">${esc(x.st||'Идея')} · ${esc(x.dir||'')}${x.metric?' · успех: '+esc(x.metric):''}${x.dl?' · до '+esc(short(x.dl)):''}</small></div><button class="edit" data-act="hypOpen" data-url="${esc(x.url)}">Открыть</button></div>`).join('')||'<p class="empty">Нет гипотез</p>')+errBox(['hyp']),`<span class="pill">${hy.length}</span>`,.05);
   h+=`</div><div>`;
@@ -705,7 +770,7 @@ function render(){
     tick();
   if(S.sheet)renderSheet();
 }
-function tick(){const w=LS.get('timer',null);const s=w?Math.floor((Date.now()-w.start)/1000):0;const t=pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60);document.querySelectorAll('[data-timer]').forEach(e=>e.textContent=t);$('#workChip').hidden=!w}
+function tick(){const w=LS.get('timer',null);const s=w?Math.floor((Date.now()-w.start)/1000):0;if(w&&w.step&&s>=w.min*60&&!tick.busy){tick.busy=true;LS.set('timer',null);toast('⏰ Время! Шаг засчитан');stepDone(w.step).finally(()=>{tick.busy=false})}const t=pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60);document.querySelectorAll('[data-timer]').forEach(e=>e.textContent=t);$('#workChip').hidden=!w}
 setInterval(tick,1000);
 
 /* ===== Шторка ===== */
@@ -774,7 +839,7 @@ async function act(name,el){
   case 'promAdd':{const who=$('#pWho').value.trim(),what=$('#pWhat').value.trim();if(!what)return toast('Что обещано?');const id='P'+Date.now().toString(36).slice(-5).toUpperCase();
     const row=[id,ru(new Date()),S.pDir||'Я обещал',who,what,$('#pDue').value?toRu($('#pDue').value):'',$('#pProj').value.trim(),'','Открыт',''];
     await guard(async()=>{await appendRow(C.JB,'Обещания!A1',row);(S.prom=S.prom||[]).push({row:(S.prom.length+2),id,dir:row[2],who,what,due:$('#pDue').value,st:'Открыт'});['pWho','pWhat','pDue','pProj'].forEach(k=>$('#'+k).value='')},'Записал');render();break}
-  case 'projMode':{const p=(S.proj||[]).find(x=>x.id===d.id);if(d.m==='Веду'&&p.mode!=='Веду'&&(S.proj||[]).filter(x=>x.mode==='Веду').length>=4)return toast('Уже 4 проекта «Веду» — сначала освободи слот');
+  case 'projMode':{const p=(S.proj||[]).find(x=>x.id===d.id);if(d.m==='Веду'&&p.mode!=='Веду'&&p.st!=='Регулярно'&&(S.proj||[]).filter(x=>x.mode==='Веду'&&x.st!=='Регулярно').length>=5)return toast('Уже 5 проектов «Веду» — сначала освободи слот');
     p.mode=d.m;render();await guard(()=>setRow(C.JB,'Проекты',{A:p.id},p.row,{H:d.m}),'Режим: '+d.m);break}
   case 'projCopy':{const p=(S.proj||[]).find(x=>x.id===d.id);const ts=(S.tasks||[]).filter(x=>p.tids.includes(x.id));const txt=`${p.name}\n`+ts.map(x=>`• ${x.id} ${x.title} — ${x.st}${x.dl?', DL '+toRu(x.dl):''}${x.next?'. Дальше: '+x.next:''}`).join('\n');copy(txt);break}
   case 'questDone':{const q=(S.quests||[]).find(x=>x.url===d.url);q.st='Готово';q.due=q.due||t;render();await guard(()=>nUpdate('quests',q.url,{'Статус':'Готово','Сегодня':'__NO__'}),`+${XP[q.k]||0} XP 🎉`);break}
@@ -803,6 +868,9 @@ async function act(name,el){
   case 'hooks':{const i=(S.ideas||[]).find(x=>x.url===d.url);ai('hooks'+d.url,`Я веду блог @krmovy (Instagram Reels): ИИ, деньги и цифры, истории о себе, путь PSM в Kolesa. Цель — 10 000 подписчиков. Придумай 5 хуков (первая фраза до 12 слов, чтобы не пролистали за 2 секунды) для идеи: «${i.t}». ${i.hook?'Текущий хук: '+i.hook:''} Разные приёмы: интрига, цифры, боль, вызов. Только список из 5 строк.`);break}
   case 'ideaAdd':{const tt=$('#ideaT').value.trim();if(!tt)return;await guard(async()=>{await nCreate(C.N.ideas,{'Название':tt,'Вид':$('#ideaK').value,'Статус':'Сырая','Источник':'Свой'});$('#ideaT').value='';loadAll()},'В банке');break}
   case 'ideaNext':{const i=(S.ideas||[]).find(x=>x.url===d.url);const nx=IDEA_ST[Math.min(3,IDEA_ST.indexOf(i.st||'Сырая')+1)];i.st=nx;render();const pr={'Статус':nx};if(nx==='Выложено')pr['date:Дата публикации:start']=t;await guard(()=>nUpdate('ideas',i.url,pr),'→ '+nx);break}
+  case 'stepDone':await stepDone(d.k);break;
+  case 'stepGo':{const s=stepNow(d.k);LS.set('timer',{start:Date.now(),what:s[1],step:d.k,min:s[2]});render();toast(`Погнали: ${s[2]} мин`);break}
+  case 'sumFor':{const e=(S.cal||[])[+d.i];S.view='work';S.work='ai';render();window.scrollTo(0,0);const x=$('#sumText');if(x){x.value='Встреча: '+((e&&e.summary)||'')+'\n';x.focus()}break}
   case 'copyHook':copy(d.h||'');break;
   case 'reelAgain':{const r=reelStats().all.find(x=>x.url===d.url);if(!r)return;const pr={'Название':'Ещё раз: '+(r.t||'залёт'),'Вид':'Идея','Статус':'Сырая','Источник':'Свой','Хук':r.hook||'','Заметки':`Повтор моего залёта ×${r.x.toFixed(1)} (${fmtN(r.v)} просм.). ${r.why||''}`.trim()};if(safeUrl(r.link))pr['Референс']=r.link;
     await guard(async()=>{await nCreate(C.N.ideas,pr);loadAll()},'В банке идей — снимай 🔥');break}
@@ -824,7 +892,7 @@ async function act(name,el){
   case 'clLost':{const c=(S.clients||[]).find(x=>x.url===d.url);c.st='Отказ';render();await guard(()=>nUpdate('clients',c.url,{'Стадия':'Отказ'}));break}
   case 'buy':{const s=(S.shop||[]).find(x=>x.url===d.url);if(heroStats().coins<+s.price)return;s.got='__YES__';render();await guard(()=>nUpdate('shop',s.url,{'Куплено':'__YES__','date:Дата:start':t}),'Награда твоя 🎁');break}
   case 'workStart':LS.set('timer',{start:Date.now(),what:($('#tWhat')&&$('#tWhat').value)||''});render();break;
-  case 'workStop':{const w=LS.get('timer',null);LS.set('timer',null);render();if(!w)return;const min=Math.round((Date.now()-w.start)/60000);toast(`Отработал ${min} мин`);
+  case 'workStop':{const w=LS.get('timer',null);if(w&&w.step){LS.set('timer',null);render();await stepDone(w.step);break}LS.set('timer',null);render();if(!w)return;const min=Math.round((Date.now()-w.start)/60000);toast(`Отработал ${min} мин`);
     if(min>=50){const r=(S.habits||[]).find(x=>x.d===t);if(!r||!yes(r.h1)){const cb={dataset:{k:'h1'},checked:true};act('habit',cb)}}break}
   }
 }
