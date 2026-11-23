@@ -385,7 +385,7 @@ const S={view:'today',mode:new Date().getHours()>=17?'eve':'morn',work:'focus',m
 
 /* ===== Сервер (Apps Script) ===== */
 const ERR_TXT=[[/row_not_found|row_ambiguous|bad_match/,'Таблица поменялась — обновил данные, нажми ещё раз'],[/bad_key/,'Неверный ключ — переподключи приложение (⚙️)'],[/calendar_no_access/,'Нет доступа к рабочему календарю — поделись им с личным Gmail'],[/notion_no_token/,'Добавь NOTION_TOKEN в свойства скрипта'],[/notion_40[134]/,'Notion не пускает — подключи интеграцию к странице «Мозг Ерназара»'],[/permission|доступ|not found|Unexpected error while getting/i,'Нет доступа к таблице — расшарь её на личный Gmail'],[/ai_off/,'ИИ выключен: добавь GEMINI_KEY'],[/column_locked|append_locked/,'Эту ячейку приложению менять нельзя'],[/Failed to fetch|NetworkError|offline/i,'Нет связи с сервером']];
-const errMsg=e=>{const m=String((e&&e.message)||e||'');const f=ERR_TXT.find(x=>x[0].test(m));return f?f[1]:'Ошибка: '+m.slice(0,120)};
+const errMsg=e=>{const m=String((e&&e.message)||e||'');const f=ERR_TXT.find(x=>x[0].test(m));return f?f[1]+(/^notion_\d/.test(m)?' ['+m.slice(0,140)+']':''):'Ошибка: '+m.slice(0,120)};
 async function api(calls){
   const c=S.conn;if(!c)throw new Error('offline');
   const r=await fetch(c.url,{method:'POST',body:JSON.stringify({key:c.key,action:'batch',calls})});
