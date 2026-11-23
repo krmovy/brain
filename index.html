@@ -415,6 +415,7 @@ const MAP={
 };
 const SORT={habits:(a,b)=>a.d<b.d?1:-1,ideas:null,finds:(a,b)=>(a.d||'')<(b.d||'')?1:-1,metrics:(a,b)=>a.d<b.d?1:-1};
 const PARSE={
+  log:v=>v,
   cal:evs=>evs.filter(e=>e.my!=='NO'&&!/покушац|обед/i.test(e.summary||'')&&(e.guests||[]).filter(g=>!C.ME.test(g.email||'')).length>0).map(e=>({summary:e.summary,description:e.description,start:{dateTime:e.start},end:{dateTime:e.end},attendees:e.guests.filter(g=>!C.ME.test(g.email||'')).map(g=>({displayName:g.name,email:g.email}))})).sort((a,b)=>a.start.dateTime<b.start.dateTime?-1:1),
   tasks:v=>v.slice(1).map((r,i)=>({row:i+2,id:r[0]||'',epic:r[1]||'',epicName:r[2]||'',title:r[3]||'',dept:r[4]||'',owner:r[5]||'',team:r[6]||'',st:r[7]||'',prio:r[8]||'',dl:fromRu(r[9]),moves:+r[10]||0,upd:r[12]||'',next:r[13]||'',block:r[14]||'',link:r[15]||'',updated:r[16]||'',goal:r[17]||''})).filter(x=>x.id),
   dec:v=>v.slice(1).map((r,i)=>({row:i+2,date:r[0]||'',epic:r[1]||'',dec:r[2]||'',act:r[3]||'',who:r[4]||'',due:fromRu(r[5]),st:r[6]||'',meet:r[7]||''})).filter(x=>x.act||x.dec),
@@ -429,7 +430,8 @@ async function loadAll(){
     ['tasks',{action:'sheet.get',book:'SVC',range:'Задачи!A1:R500'}],
     ['dec',{action:'sheet.get',book:'SVC',range:'Решения!A1:H500'}],
     ['prom',{action:'sheet.get',book:'JB',range:'Обещания!A1:J500'}],
-    ['proj',{action:'sheet.get',book:'JB',range:'Проекты!A1:Z100'}]
+    ['proj',{action:'sheet.get',book:'JB',range:'Проекты!A1:Z100'}],
+    ['log',{action:'log.get',n:20}]
   ].concat(Object.keys(MAP).map(db=>[db,{action:'notion.query',db,sorts:db==='ideas'?[{timestamp:'created_time',direction:'descending'}]:undefined}]));
   S.syncing=true;render();
   try{
@@ -669,6 +671,7 @@ function vMe(){
   h+=card('🏰 Цели и боссы',loading('quests')?wait:(goals.filter(q=>q.st!=='Готово').map(questRow).join('')||'<p class="empty">Нет</p>')+`<div class="inline"><input class="field" id="qT" placeholder="Новый квест"></div><div class="inline"><select class="field" id="qK" style="flex:0 0 100px">${Object.keys(XP).map(k=>`<option ${k==='Задача'?'selected':''}>${k}</option>`).join('')}</select><select class="field" id="qS" style="flex:0 0 100px">${SPH.map(s=>`<option value="${esc(s[0])}">${s[1]}</option>`).join('')}</select><button class="btn" data-act="qAdd">+</button></div>`+errBox(['quests']),'',.05);
   h+=card('⚔️ Квесты в бою',(S.quests||[]).filter(q=>q.st!=='Готово'&&q.k!=='Босс'&&q.k!=='Эпик').slice(0,12).map(questRow).join('')||'<p class="empty">Нет</p>','',.1);
   h+=card('🛒 Магазин наград',(S.shop||[]).map(s=>`<div class="task ${yes(s.got)?'done':''}"><div class="t"><span>${esc(s.t)}</span><small class="sub">${esc(s.price)} монет</small></div>${yes(s.got)?'<span class="pill">куплено</span>':`<button class="btn sm ${st.coins>=+s.price?'':'ghost'}" data-act="buy" data-url="${esc(s.url)}" ${st.coins>=+s.price?'':'disabled'}>Купить</button>`}</div>`).join('')||'<p class="empty">Нет наград</p>','',.15);
+  h+=card('🕘 Последние действия',S.err.log?'<p class="empty">Лог появится после обновления сервера (новый Code-brain.gs → «Новая версия» развёртывания).</p>':((S.log||[]).length?(S.log||[]).map(x=>`<div class="task"><div class="t"><span class="clamp2">${esc(x[2]||'')}</span><small class="clamp1">${esc(x[0]||'')} · ${esc(x[1]||'')}</small></div></div>`).join(''):'<p class="empty">Пока пусто — здесь будет всё, что ты меняешь на сайте.</p>'),'',.18);
   h+=card('🏅 Ачивки',`<div class="ach">${(S.ach||[]).map(a=>`<div class="badge ${yes(a.open)?'got':''}"><div class="ic">🏅</div><b>${esc(a.t)}</b><small>${esc(a.how)}</small></div>`).join('')}</div>`,'',.2);
   h+=`</div></div>`;
   return h;
