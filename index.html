@@ -459,12 +459,11 @@ function toCols(db,props){const m=COL[db],p=normProps(props),o={};Object.keys(p)
 function toN(db,r){const m=COL[db],o={id:r.id,created:r.created_at};Object.keys(m).forEach(k=>{o[k]=r[m[k]]});return o}
 async function nUpdate(db,id,props){
   await sb('PATCH',TBL[db]+'?id=eq.'+encodeURIComponent(id),toCols(db,props),'return=minimal');
-  const it=(S[db]||[]).find(x=>x.url===id);if(it&&it.nid)mirror({action:'notion.update',db,page:it.nid,props:normProps(props)});
+  // с 26.11 Notion — архив: дубль туда выключен
   return {id};
 }
 async function nCreate(db,props){
   const [row]=await sb('POST',TBL[db],toCols(db,props),'return=representation');
-  if(S.conn)one({action:'notion.create',db,props:normProps(props)}).then(r=>r&&r.id&&sb('PATCH',TBL[db]+'?id=eq.'+row.id,{notion_id:r.id},'return=minimal')).catch(()=>{});
   return {id:row.id};
 }
 const nUpd=(db,u,p)=>nUpdate(db,u,p),nNew=async(db,p)=>{const r=await nCreate(db,p);return r&&r.id};
