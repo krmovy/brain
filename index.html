@@ -307,6 +307,20 @@ p{margin:6px 0}
 #bg::after{content:'';position:absolute;left:-10%;right:-10%;top:56%;height:90px;background:radial-gradient(60% 50% at 50% 50%,rgba(230,215,222,.06),transparent 75%);filter:blur(12px);animation:mist 34s ease-in-out infinite}
 html,body,button,input,textarea,select{font-family:'Golos Text',system-ui,-apple-system,sans-serif}
 /* ===== /ТЕМА ===== */
+/* ===== Сейчас · + · Прогресс ===== */
+#nav{justify-content:space-around}
+#nav .plus{width:58px;height:58px;border-radius:20px;border:0;background:#F4A7B9;color:#1A1114;font-size:32px;font-weight:400;line-height:1;cursor:pointer;justify-self:center;align-self:center;box-shadow:0 8px 24px rgba(244,167,185,.35);transition:transform .2s}
+#nav .plus:active{transform:scale(.92)}
+@media (max-width:899px){#nav{grid-template-columns:1fr 72px 1fr;grid-auto-flow:row}}
+.nowC{background:linear-gradient(160deg,#2A1C22,rgba(26,26,28,.9) 62%);border:1px solid rgba(244,167,185,.35)}
+.nowC .lbl{color:#F4A7B9}
+.nowT{font-size:21px;line-height:1.25;font-weight:600;margin:2px 0 6px}
+.nowB{display:flex;gap:8px;margin-top:14px}.nowB .btn{flex:none}.nowB .btn:first-child{flex:1;background:#F4A7B9;color:#1A1114}
+.meetC{display:flex;align-items:center;gap:12px}.meetC .tm{font-size:20px;font-weight:600;color:#F4A7B9;min-width:58px}.meetC .t{flex:1;min-width:0}
+.tile.go{border:0;text-align:left;color:var(--text);cursor:pointer;font:inherit}
+.hub{padding:6px 14px}.hubI{display:flex;align-items:center;gap:12px;width:100%;background:none;border:0;border-top:1px solid #2A2A2E;padding:12px 0;color:var(--text);text-align:left;cursor:pointer;font:inherit}
+.hubI:first-child{border-top:0}.hubI .hi{font-size:22px;width:30px;text-align:center}.hubI .t{flex:1;min-width:0}.hubI b{font-weight:500;display:block}.hubI small{color:var(--muted)}.hubI .ar{color:var(--muted);font-size:22px}
+.backL{background:none;border:0;color:#F4A7B9;font:inherit;font-size:14px;padding:4px 0 8px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -334,7 +348,7 @@ html,body,button,input,textarea,select{font-family:'Golos Text',system-ui,-apple
   <div id="note" role="status" hidden></div>
   <main id="view" class="view"></main>
 </div>
-<nav id="nav" aria-label="Разделы"><a href="#today" data-v="today"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg><span>Сегодня</span></a><a href="#work" data-v="work"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span>Работа</span></a><a href="#blog" data-v="blog"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span>Блог</span></a><a href="#hits" data-v="hits"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1-3.7 2.2-4.8.2 1.6 1 2.6 2 3 0-2.8-.2-5.4.8-8.2z"/></svg><span>Залёты</span></a><a href="#biz" data-v="biz"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18M6 20V10l6-5 6 5v10"/><path d="M10 20v-5h4v5"/></svg><span>Бизнес</span></a><a href="#me" data-v="me"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Я</span></a></nav>
+<nav id="nav" aria-label="Разделы"><a href="#now" data-v="now"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg><span>Сейчас</span></a><button class="plus" data-act="add" aria-label="Быстрая запись">+</button><a href="#prog" data-v="prog"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Прогресс</span></a></nav>
 <div id="sheetWrap" hidden><div class="back" data-act="close"></div><div id="sheet" role="dialog" aria-modal="true" aria-label="Карточка"></div></div>
 <div id="splash"><div class="logo">🧠</div><div class="nick">Мозг Ерназара</div><div class="tag2">Работа · Блог · Бизнес · Я</div></div>
 <div id="workChip" hidden><span style="width:9px;height:9px;border-radius:5px;background:var(--green)"></span><span data-timer>00:00:00</span><button data-act="workStop">Закончить</button></div>
@@ -379,29 +393,102 @@ function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');cl
 const LS={get(k,d){try{const v=localStorage.getItem('brain_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('brain_'+k,JSON.stringify(v))}catch(e){}}};
 
 /* ===== Состояние ===== */
-const S={view:'today',mode:new Date().getHours()>=17?'eve':'morn',work:'focus',mcp:null,sample:null,err:{},
+const S={view:'now',queue:null,auth:null,mode:new Date().getHours()>=17?'eve':'morn',work:'focus',mcp:null,sample:null,err:{},
   cal:null,tasks:null,dec:null,prom:null,proj:null,quests:null,habits:null,ideas:null,finds:null,metrics:null,hyp:null,clients:null,shop:null,ach:null,reels:null,quote:null,
   ai:{},sheet:null,busy:{}};
 
-/* ===== Сервер (Apps Script) ===== */
-const ERR_TXT=[[/row_not_found|row_ambiguous|bad_match/,'Таблица поменялась — обновил данные, нажми ещё раз'],[/bad_key/,'Неверный ключ — переподключи приложение (⚙️)'],[/calendar_no_access/,'Нет доступа к рабочему календарю — поделись им с личным Gmail'],[/notion_no_token/,'Добавь NOTION_TOKEN в свойства скрипта'],[/notion_40[134]/,'Notion не пускает — подключи интеграцию к странице «Мозг Ерназара»'],[/permission|доступ|not found|Unexpected error while getting/i,'Нет доступа к таблице — расшарь её на личный Gmail'],[/ai_off/,'ИИ выключен: добавь GEMINI_KEY'],[/column_locked|append_locked/,'Эту ячейку приложению менять нельзя'],[/Failed to fetch|NetworkError|offline/i,'Нет связи с сервером']];
-const errMsg=e=>{const m=String((e&&e.message)||e||'');const f=ERR_TXT.find(x=>x[0].test(m));return f?f[1]+(/^notion_\d/.test(m)?' ['+m.slice(0,140)+']':''):'Ошибка: '+m.slice(0,120)};
+/* ===== База: Supabase — основная. Apps Script — рабочая таблица, календарь и (на переходную неделю) дубль в Notion и Jarvis ===== */
+const SB={url:'https://vawqjgehztbspusjojxl.supabase.co',key:'sb_publishable_j3t35SYYwqEQcXnqWhbaMw_N7r3yeFe'};
+const ERR_TXT=[[/auth_none|auth_expired|refresh_token|Invalid Refresh/i,'Войди заново'],[/supabase_/,'База не ответила, попробуй ещё раз'],[/no_server/,'Для рабочей таблицы подключи сервер Apps Script (⚙️)'],[/row_not_found|row_ambiguous|bad_match/,'Таблица поменялась — обновил данные, нажми ещё раз'],[/bad_key/,'Неверный ключ сервера (⚙️)'],[/calendar_no_access/,'Нет доступа к рабочему календарю'],[/permission|доступ|not found|Unexpected error while getting/i,'Нет доступа к таблице — расшарь её на личный Gmail'],[/column_locked|append_locked/,'Эту ячейку приложению менять нельзя'],[/Failed to fetch|NetworkError|offline|Load failed/i,'Нет связи']];
+const errMsg=e=>{const m=String((e&&e.message)||e||'');const f=ERR_TXT.find(x=>x[0].test(m));return f?f[1]:'Ошибка: '+m.slice(0,120)};
+
+/* --- вход: одноразовый код на почту --- */
+async function sbAuth(path,body){const r=await fetch(SB.url+'/auth/v1/'+path,{method:'POST',headers:{apikey:SB.key,'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.msg||j.error_description||j.message||('auth_'+r.status));return j}
+function saveSess(j){S.auth={at:j.access_token,rt:j.refresh_token,exp:Date.now()+((+j.expires_in||3600)-60)*1000,email:(j.user&&j.user.email)||(S.auth&&S.auth.email)||''};LS.set('auth',S.auth)}
+function logout(){S.auth=null;LS.set('auth',null);render()}
+async function token(){
+  if(!S.auth)throw new Error('auth_none');
+  if(Date.now()>S.auth.exp){
+    if(!token.p)token.p=sbAuth('token?grant_type=refresh_token',{refresh_token:S.auth.rt}).then(saveSess).catch(e=>{if(!/fetch|network|load failed/i.test(String(e.message)))logout();throw e}).finally(()=>{token.p=null});
+    await token.p;
+  }
+  return S.auth.at;
+}
+async function sb(method,path,body,prefer,retry){
+  const h={apikey:SB.key,Authorization:'Bearer '+await token()};if(body)h['Content-Type']='application/json';if(prefer)h.Prefer=prefer;
+  const r=await fetch(SB.url+'/rest/v1/'+path,{method,headers:h,body:body?JSON.stringify(body):undefined});
+  if(r.status===401&&!retry){S.auth.exp=0;return sb(method,path,body,prefer,true)}
+  const tx=await r.text();if(!r.ok)throw new Error('supabase_'+r.status+': '+tx.slice(0,160));return tx?JSON.parse(tx):null;
+}
+
+/* --- сервер Apps Script (необязательный) --- */
 async function api(calls){
-  const c=S.conn;if(!c)throw new Error('offline');
+  const c=S.conn;if(!c)throw new Error('no_server');
   const r=await fetch(c.url,{method:'POST',body:JSON.stringify({key:c.key,action:'batch',calls})});
   const j=await r.json();if(!j.ok)throw new Error(j.error||'server');
   return j.results;
 }
 async function one(call){const [r]=await api([call]);if(!r.ok)throw new Error(r.error);return r.data}
-const book=id=>id===C.SVC?'SVC':'JB';
-const sheet=(id,range)=>one({action:'sheet.get',book:book(id),range});
-// Запись по ключу строки (ID), сервер сам находит строку и пускает только разрешённые колонки.
-const setRow=(id,sheet,match,hint,cells)=>one({action:'sheet.setRow',book:book(id),sheet,match,hint,cells});
-const appendRow=(id,range,row)=>one({action:'sheet.append',book:book(id),sheet:range.split('!')[0],row});
+const mirror=call=>{if(S.conn)one(call).catch(()=>{})}; // дубль в Notion/Jarvis на переходную неделю: молча, не мешает работе
+
+/* --- личные базы: русские поля (как в Notion) ↔ колонки Supabase --- */
+const TBL={quests:'quests',habits:'habits',ideas:'ideas',finds:'finds',metrics:'metrics',reels:'reels',quote:'quotes',hyp:'hypotheses',clients:'clients',shop:'shop',ach:'achievements'};
+const COL={
+  quests:{'Квест':'title','Сфера':'sphere','Тип':'kind','Статус':'status','Срок':'due','Сегодня':'today'},
+  habits:{'День':'label','Дата':'day','Час на блог или бизнес':'h_blog','Вечерний итог и план':'h_evening','Шаг блог':'step_blog','Шаг бизнес':'step_biz'},
+  ideas:{'Название':'title','Вид':'kind','Тема':'topic','Статус':'status','Хук':'hook','Заметки':'notes','Источник':'source','Референс':'ref','Дата публикации':'published'},
+  finds:{'Ролик':'title','Автор':'author','Платформа':'platform','Ссылка':'link','Просмотры':'views','Во сколько раз выше нормы':'x_norm','Почему залетел':'why','Хук':'hook','Как адаптировать':'adapt','Тема':'topic','Оценка':'score','Решение':'decision','Дата':'day'},
+  metrics:{'Дата':'day','Подписчики':'followers','Источник':'source'},
+  reels:{'Ролик':'title','Ссылка':'link','Код':'code','Платформа':'platform','Дата':'day','Просмотры':'views','Лайки':'likes','Комментарии':'comments','Сохранения':'saves','Репосты':'shares','Подписки':'follows','Хук':'hook','Тема':'topic','Почему залетел':'why'},
+  quote:{'Цитата':'text','Автор':'author','Почему тебе':'why','Дата':'day','Тема':'topic'},
+  hyp:{'Гипотеза':'title','Направление':'direction','Статус':'status','Тест':'test','Метрика успеха':'metric','Результат':'result','Вывод':'conclusion','Доход ₸':'income','Старт':'start','Дедлайн':'deadline'},
+  clients:{'Компания':'company','Ниша':'niche','Контакт':'contact','Стадия':'stage','След. шаг':'next_step','Дата касания':'touched','Сумма ₸':'amount'},
+  shop:{'Награда':'title','Цена':'price','Куплено':'bought'},
+  ach:{'Ачивка':'title','Как получить':'how','Редкость':'rarity','Открыта':'unlocked'}
+};
 function normProps(pr){const o={};Object.keys(pr).forEach(k=>{let v=pr[k];const m=k.match(/^date:(.+):start$/);if(m)k=m[1];if(v==='__YES__')v=true;if(v==='__NO__')v=false;o[k]=v});return o}
-const nUpdate=(db,id,props)=>one({action:'notion.update',db,page:id,props:normProps(props)});
-const nCreate=(db,props)=>one({action:'notion.create',db,props:normProps(props)});
-const nUpd=(db,u,p)=>nUpdate(db,u,p),nNew=async(db,p)=>{const r=await nCreate(C.N[db],p);return r&&r.id};
+function toCols(db,props){const m=COL[db],p=normProps(props),o={};Object.keys(p).forEach(k=>{if(m[k])o[m[k]]=p[k]===''?null:p[k]});return o}
+function toN(db,r){const m=COL[db],o={id:r.id,created:r.created_at};Object.keys(m).forEach(k=>{o[k]=r[m[k]]});return o}
+async function nUpdate(db,id,props){
+  await sb('PATCH',TBL[db]+'?id=eq.'+encodeURIComponent(id),toCols(db,props),'return=minimal');
+  const it=(S[db]||[]).find(x=>x.url===id);if(it&&it.nid)mirror({action:'notion.update',db,page:it.nid,props:normProps(props)});
+  return {id};
+}
+async function nCreate(db,props){
+  const [row]=await sb('POST',TBL[db],toCols(db,props),'return=representation');
+  if(S.conn)one({action:'notion.create',db,props:normProps(props)}).then(r=>r&&r.id&&sb('PATCH',TBL[db]+'?id=eq.'+row.id,{notion_id:r.id},'return=minimal')).catch(()=>{});
+  return {id:row.id};
+}
+const nUpd=(db,u,p)=>nUpdate(db,u,p),nNew=async(db,p)=>{const r=await nCreate(db,p);return r&&r.id};
+
+/* --- рабочие таблицы: запись через Apps Script (белый список), копия в базе обновляется сразу --- */
+const book=id=>id===C.SVC?'SVC':'JB';
+const W_COLS={'Задачи':{H:'status',J:'dl',K:'dl_moves',M:'week_upd',Q:'updated'},'Решения':{G:'status'},'Обещания':{I:'status'},'Проекты':{H:'mode'}};
+function wCells(sheet,cells){const m=W_COLS[sheet]||{},o={};Object.keys(cells).forEach(c=>{if(m[c])o[m[c]]=m[c]==='dl'?(fromRu(cells[c])||null):cells[c]});return o}
+async function setRow(id,sheet,match,hint,cells){
+  const call={action:'sheet.setRow',book:book(id),sheet,match,hint,cells};
+  if(book(id)==='SVC'){ // командная таблица: сначала сама таблица, потом копия
+    await one(call);
+    const q=sheet==='Задачи'?'work_tasks?id=eq.'+encodeURIComponent(match.A):'work_decisions?row_num=eq.'+(+hint);
+    sb('PATCH',q,wCells(sheet,cells),'return=minimal').catch(()=>{});return;
+  }
+  const t=sheet==='Обещания'?'promises':'projects';
+  const q=match.A?'id=eq.'+encodeURIComponent(match.A):'what=eq.'+encodeURIComponent(match.E||'');
+  await sb('PATCH',t+'?'+q,wCells(sheet,cells),'return=minimal');
+  mirror(Object.assign(call,{hint:0}));
+}
+async function appendRow(id,range,row){
+  const sheet=range.split('!')[0];
+  if(sheet==='Обещания')await sb('POST','promises',{id:row[0],day:fromRu(row[1])||today(),direction:row[2]||null,person:row[3]||null,what:row[4]||null,due:fromRu(row[5])||null,project_id:row[6]||null,meeting_id:row[7]||null,status:row[8]||'Открыт',result:row[9]||null},'return=minimal');
+  else if(sheet==='Журнал')await sb('POST','journal',{id:row[0],day:fromRu(row[1])||today(),project_id:row[2]||null,minutes:+row[3]||null,type:row[4]||null,what:row[5]||null,value:row[6]||null,source:row[7]||null,meeting_id:row[8]||null},'return=minimal');
+  else throw new Error('append_locked');
+  mirror({action:'sheet.append',book:book(id),sheet,row});
+}
+async function toAgent(agent,title,prompt,ref_table,ref_id){
+  const [r]=await sb('POST','queue',{agent,title:String(title||'').slice(0,120),prompt,ref_table:ref_table||null,ref_id:ref_id||null},'return=representation');
+  (S.queue=S.queue||[]).unshift(r);return r;
+}
+
 const MAP={
   quests:r=>({url:r.id,t:r['Квест'],s:r['Сфера'],k:r['Тип'],st:r['Статус'],due:r['Срок'],td:r['Сегодня']}),
   habits:r=>({url:r.id,t:r['День'],d:r['Дата'],h1:r['Час на блог или бизнес'],h2:r['Вечерний итог и план'],sb:r['Шаг блог'],sz:r['Шаг бизнес']}),
@@ -417,32 +504,28 @@ const MAP={
 };
 const SORT={habits:(a,b)=>a.d<b.d?1:-1,ideas:null,finds:(a,b)=>(a.d||'')<(b.d||'')?1:-1,metrics:(a,b)=>a.d<b.d?1:-1};
 const PARSE={
-  log:v=>v,
   cal:evs=>evs.filter(e=>e.my!=='NO'&&!/покушац|обед/i.test(e.summary||'')&&(e.guests||[]).filter(g=>!C.ME.test(g.email||'')).length>0).map(e=>({summary:e.summary,description:e.description,start:{dateTime:e.start},end:{dateTime:e.end},attendees:e.guests.filter(g=>!C.ME.test(g.email||'')).map(g=>({displayName:g.name,email:g.email}))})).sort((a,b)=>a.start.dateTime<b.start.dateTime?-1:1),
-  tasks:v=>v.slice(1).map((r,i)=>({row:i+2,id:r[0]||'',epic:r[1]||'',epicName:r[2]||'',title:r[3]||'',dept:r[4]||'',owner:r[5]||'',team:r[6]||'',st:r[7]||'',prio:r[8]||'',dl:fromRu(r[9]),moves:+r[10]||0,upd:r[12]||'',next:r[13]||'',block:r[14]||'',link:r[15]||'',updated:r[16]||'',goal:r[17]||''})).filter(x=>x.id),
-  dec:v=>v.slice(1).map((r,i)=>({row:i+2,date:r[0]||'',epic:r[1]||'',dec:r[2]||'',act:r[3]||'',who:r[4]||'',due:fromRu(r[5]),st:r[6]||'',meet:r[7]||''})).filter(x=>x.act||x.dec),
-  prom:v=>v.slice(1).map((r,i)=>({row:i+2,id:r[0]||'',date:r[1]||'',dir:r[2]||'',who:r[3]||'',what:r[4]||'',due:fromRu(r[5])||r[5]||'',proj:r[6]||'',st:r[8]||'',res:r[9]||''})).filter(x=>x.what),
-  proj:v=>{const h=v[0]||[];const ix=n=>h.indexOf(n);return v.slice(1).map((r,i)=>({row:i+2,id:r[0],name:r[1]||'',epic:r[2]||'',tids:String(r[3]||'').split(/[,\s]+/).filter(Boolean),st:r[4]||'',stream:r[5]||'',mode:r[7]||'',why:r[ix('зачем')]||'',goal:r[ix('цель')]||'',now:r[ix('сейчас')]||'',focus:r[ix('фокус недели')]||''})).filter(p=>p.id)}
+  tasks:rs=>rs.map(r=>({row:r.row_num,id:r.id,epic:r.epic_id||'',epicName:r.epic||'',title:r.title||'',dept:r.dept||'',owner:r.owner||'',team:r.team||'',st:r.status||'',prio:r.prio||'',dl:r.dl||'',moves:+r.dl_moves||0,upd:r.week_upd||'',next:r.next_step||'',block:r.blocker||'',link:r.link||'',updated:r.updated||'',goal:r.goal||''})),
+  dec:rs=>rs.map(r=>({row:r.row_num,date:r.meet_date||'',epic:r.epic_id||'',dec:r.decision||'',act:r.action_item||'',who:r.owner||'',due:r.due||'',st:r.status||'',meet:r.meeting||''})),
+  prom:rs=>rs.map((r,i)=>({row:i+2,id:r.id,date:r.day?toRu(r.day):'',dir:r.direction||'',who:r.person||'',what:r.what||'',due:r.due||'',proj:r.project_id||'',st:r.status||'',res:r.result||''})).filter(x=>x.what),
+  proj:rs=>rs.map((r,i)=>({row:i+2,id:r.id,name:r.name||'',epic:r.epic_id||'',tids:String(r.task_ids||'').split(/[,\s]+/).filter(Boolean),st:r.status||'',stream:r.stream||'',mode:r.mode||'',why:r.why||'',goal:r.goal||'',now:r.now||'',focus:r.focus_week||''}))
 };
 async function loadAll(){
-  if(!S.conn)return;
-  const t=today();
-  const plan=[
-    ['cal',{action:'cal.day',date:t}],
-    ['tasks',{action:'sheet.get',book:'SVC',range:'Задачи!A1:R500'}],
-    ['dec',{action:'sheet.get',book:'SVC',range:'Решения!A1:H500'}],
-    ['prom',{action:'sheet.get',book:'JB',range:'Обещания!A1:J500'}],
-    ['proj',{action:'sheet.get',book:'JB',range:'Проекты!A1:Z100'}],
-    ['log',{action:'log.get',n:20}]
-  ].concat(Object.keys(MAP).map(db=>[db,{action:'notion.query',db,sorts:db==='ideas'?[{timestamp:'created_time',direction:'descending'}]:undefined}]));
+  if(!S.auth)return;
+  const jobs=Object.keys(MAP).map(db=>[db,()=>sb('GET',TBL[db]+'?select=*&order=created_at.desc').then(rs=>rs.map(r=>Object.assign(MAP[db](toN(db,r)),{nid:r.notion_id})))]).concat([
+    ['tasks',()=>sb('GET','work_tasks?select=*&order=row_num').then(PARSE.tasks)],
+    ['dec',()=>sb('GET','work_decisions?select=*&order=row_num').then(PARSE.dec)],
+    ['prom',()=>sb('GET','promises?select=*&order=created_at').then(PARSE.prom)],
+    ['proj',()=>sb('GET','projects?select=*&order=id').then(PARSE.proj)],
+    ['queue',()=>sb('GET','queue?select=*&order=created_at.desc&limit=30')]
+  ]);
+  if(S.conn)jobs.push(['cal',()=>one({action:'cal.day',date:today()}).then(PARSE.cal)],['log',()=>one({action:'log.get',n:20})]);
   S.syncing=true;render();
-  try{
-    const res=await api(plan.map(p=>p[1]));
-    res.forEach((r,i)=>{const k=plan[i][0];if(!r.ok){S.err[k]=new Error(r.error);return}delete S.err[k];
-      let v=PARSE[k]?PARSE[k](r.data):r.data.map(MAP[k]);if(SORT[k])v=v.sort(SORT[k]);S[k]=v});
-    S.syncedAt=Date.now();LS.set('cache',{at:S.syncedAt,data:Object.fromEntries(plan.map(p=>[p[0],S[p[0]]]))});
-    $('#note').hidden=true;
-  }catch(e){$('#note').textContent=errMsg(e)+(S.syncedAt?' · показываю сохранённые данные':'');$('#note').hidden=false}
+  try{await token()}catch(e){S.syncing=false;render();return}
+  const res=await Promise.allSettled(jobs.map(j=>j[1]()));let bad=null;
+  res.forEach((r,i)=>{const k=jobs[i][0];if(r.status==='rejected'){S.err[k]=r.reason;if(!['cal','log'].includes(k))bad=r.reason;return}delete S.err[k];let v=r.value;if(SORT[k])v=v.slice().sort(SORT[k]);S[k]=v});
+  if(!bad){S.syncedAt=Date.now();LS.set('cache',{at:S.syncedAt,data:Object.fromEntries(jobs.map(j=>[j[0],S[j[0]]]))});$('#note').hidden=true}
+  else{$('#note').textContent=errMsg(bad)+(S.syncedAt?' · показываю сохранённые данные':'');$('#note').hidden=false}
   S.syncing=false;render();
 }
 const load=(key,fn)=>loadAll();
@@ -750,6 +833,55 @@ function vMe(){
   return h;
 }
 
+/* ===== ● Сейчас · + · Прогресс (решено 25.11) ===== */
+const AGENTS=['Мозг','Секретарь','ТЗ-писатель','Стратег','Продюсер','Сценарист','Монтажёр','Продажник'];
+const SUB=['today','work','blog','hits','biz','me'];
+function agentFor(n){const t=String(n.title||'');if(n.sph==='РАБота')return /тз/i.test(t)?'ТЗ-писатель':'Стратег';if(n.sph==='Popularity блог')return /сценари|хук|истори|серия/i.test(t)?'Сценарист':/сним|съёмк|монтаж/i.test(t)?'Монтажёр':'Продюсер';if(n.sph==='Бизнес ИИ')return 'Продажник';return 'Мозг'}
+function nextAction(){
+  const t=today(),qs=(S.quests||[]).filter(q=>q.st!=='Готово'&&q.k!=='Босс');
+  const q=qs.find(q=>q.st==='В бою'&&yes(q.td))||qs.find(q=>yes(q.td))||qs.find(q=>q.due&&q.due<=t&&q.k!=='Эпик');
+  if(q){const sp=SPH.find(s=>s[0]===q.s);return {kind:'quest',it:q,sph:q.s,title:q.t,meta:`${sp?sp[1]:'Квест'} · ${q.k||'Задача'} · +${XP[q.k]||0} XP${q.due?' · срок '+short(q.due):''}`}}
+  const w=(S.tasks||[]).filter(x=>myTask(x)&&open(x)).sort((a,b)=>(a.dl||'9')<(b.dl||'9')?-1:1)[0];
+  if(w)return {kind:'task',it:w,sph:'РАБота',title:w.id+' · '+w.title,meta:`Работа · ${w.st}${w.dl?' · DL '+short(w.dl)+(overdue(w.dl)?' · просрочено':''):''}`};
+  return null;
+}
+function topQuests(){const t=today();const top=(S.quests||[]).filter(q=>q.st!=='Готово'&&(yes(q.td)||(q.due&&q.due<=t&&q.k!=='Босс'&&q.k!=='Эпик'))).sort((a,b)=>(yes(b.td)-yes(a.td))||((a.due||'9')<(b.due||'9')?-1:1));const pick=ss=>top.find(q=>ss.includes(q.s));return [pick(['РАБота']),pick(['Popularity блог']),pick(['Бизнес ИИ','Личная жизнь'])].filter(Boolean)}
+function goalTiles(d){
+  const t=today(),fl=followers(),last=fl.length?+fl[fl.length-1].n:0,g=goalNow(last),days=Math.max(1,Math.ceil((new Date(g[1]+'T23:59:59')-new Date())/864e5)),per=Math.max(0,Math.ceil((g[0]-last)/days));
+  const L=LADDER.biz,bt=Math.min(stepTot('biz'),L.length),m=t.slice(0,7),month=(S.clients||[]).filter(c=>c.st==='Оплатил'&&(c.d||'').slice(0,7)===m).reduce((a,c)=>a+(+c.sum||0),0);
+  return `<div class="grid2 rise" style="--d:${d||0}s;margin-bottom:12px"><button class="tile go" data-act="go" data-v="hits"><small class="sub">Подписчики</small><div class="mid">${last.toLocaleString('ru')}</div><small class="sub">до ${g[0].toLocaleString('ru')} · ${days} дн. · +${per}/день</small><div class="bar thin" style="margin-top:8px"><i style="width:${Math.min(100,last/g[0]*100)}%"></i></div></button><button class="tile go" data-act="go" data-v="biz"><small class="sub">Бизнес</small><div class="mid">${month.toLocaleString('ru')} ₸</div><small class="sub">шаг ${bt}/${L.length} к первой оплате</small><div class="bar thin" style="margin-top:8px"><i style="width:${bt/L.length*100}%"></i></div></button></div>`;
+}
+const recentDone=()=>(S.queue||[]).filter(q=>q.status==='done'&&Date.now()-new Date(q.done_at||q.updated_at).getTime()<48*3600e3);
+function qRow(q){return `<div class="task"><button class="t" data-act="qOpen" data-id="${esc(q.id)}"><span class="clamp1">${q.status==='done'?'✅':'⏳'} ${esc(q.agent)} · ${esc(q.title||'')}</span><small class="clamp2">${esc(q.status==='done'?(q.result||'').slice(0,140):'ждёт — открой чат «'+q.agent+'» в проекте Мозг')}</small></button></div>`}
+function vNow(){
+  const d=new Date(),n=nextAction(),eve=d.getHours()>=17,t=today();
+  let h=head('Сейчас',`${WD[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]} · ${eve?'вечер':d.getHours()<12?'утро':'день'} · 🔥 ${streak()} дн.`);
+  if(!S.quests&&!S.tasks)return h+wait;
+  h+=n?`<section class="card nowC rise"><div class="lbl">Следующее действие</div><h2 class="nowT">${esc(n.title)}</h2><div class="sub">${esc(n.meta)}</div><div class="nowB"><button class="btn" data-act="focusGo">▶ Фокус 25 мин</button><button class="btn ghost" data-act="nowDone" aria-label="Готово">✓</button><button class="btn ghost" data-act="agent" data-a="${esc(agentFor(n))}">→ ${esc(agentFor(n))}</button></div></section>`
+    :card('Следующее действие','<p class="empty">Всё закрыто 👌 Отметь ☆ у квеста или запиши новое через «+».</p>');
+  const nx=(S.cal||[]).find(e=>new Date(e.end.dateTime)>d);
+  if(nx){const mins=Math.round((new Date(nx.start.dateTime)-d)/60000);h+=`<section class="card rise meetC" style="--d:.04s"><div class="tm">${hm(nx.start.dateTime)}</div><div class="t"><span class="clamp1">${esc(nx.summary||'Встреча')}</span><small class="sub">${mins>0?'через '+mins+' мин':'идёт сейчас'}</small></div><button class="edit" data-act="go" data-v="today">Подготовка</button></section>`}
+  const od=(S.tasks||[]).filter(x=>myTask(x)&&open(x)&&overdue(x.dl)).length+(S.prom||[]).filter(p=>p.st!=='Сделано'&&p.due&&p.due<t).length;
+  h+=card('🎯 3 главные',(topQuests().map(questRow).join('')||'<p class="empty">Отметь ☆ у трёх квестов: работа, блог, бизнес.</p>')+(od?`<button class="edit" data-act="go" data-v="today" style="margin-top:8px;color:var(--red)">🔥 Просрочено: ${od} →</button>`:''),'',.06);
+  h+=card(eve?'🪜 Шаги на вечер':'🪜 Шаг после работы',stepRow('blog')+(eve?stepRow('biz'):''),'',.1);
+  const rd=recentDone();if(rd.length)h+=card('🤖 Ответы агентов',rd.slice(0,3).map(qRow).join(''),'',.12);
+  h+=goalTiles(.14);
+  h+=eve?`<button class="btn" data-act="goEve" style="width:100%">🌙 Итог дня и план на завтра</button>`:`<button class="btn ghost" data-act="go" data-v="today" style="width:100%">Весь день: встречи, задачи, просрочка →</button>`;
+  return h;
+}
+function vProg(){
+  const st=heroStats(),rs=reelStats(),nf=(S.finds||[]).filter(x=>x.dec==='Новая'||!x.dec).length;
+  const mine=(S.tasks||[]).filter(x=>myTask(x)&&open(x)),od=mine.filter(x=>overdue(x.dl)).length,lead=(S.proj||[]).filter(p=>p.mode==='Веду'&&p.st!=='Регулярно').length;
+  let h=head('Прогресс','Цели, разделы и награды');
+  h+=card(`🦸 Уровень ${st.lvl}`,`<div class="sub">${st.xp} XP · до следующего ${250-st.xp%250} XP · монет ${st.coins}</div><div class="bar" style="margin-top:10px"><i style="width:${st.prog*100}%"></i></div>`);
+  h+=goalTiles(.04);
+  const T=[['today','☀️','День',S.mode==='eve'?'Вечерний итог, журнал, план на завтра':'Встречи, просрочка, мои задачи'],['work','🏢','Работа',`${mine.length} задач · ${od} просрочено · «Веду» ${lead}/5`],['hits','🔥','Залёты',`${rs.hits.length} залётов${nf?' · новых находок: '+nf:''}`],['blog','🎤','Блог','Идеи, сценарии, конвейер'],['biz','⚒️','Бизнес','Гипотезы, клиенты, доход'],['me','🙂','Я','Привычки, квесты, магазин, ачивки']];
+  h+=`<section class="card rise hub" style="--d:.08s">${T.map(x=>`<button class="hubI" data-act="go" data-v="${x[0]}"><span class="hi">${x[1]}</span><span class="t"><b>${x[2]}</b><small class="clamp1">${esc(x[3])}</small></span><span class="ar">›</span></button>`).join('')}</section>`;
+  const q=S.queue||[];if(q.length)h+=card('🤖 Запросы агентам',q.slice(0,8).map(qRow).join(''),`<span class="pill">${q.filter(x=>x.status!=='done').length} ждут</span>`,.12);
+  return h;
+}
+function vLogin(){const s=S.otp;return `<div class="top rise"><div><h1 class="title">🧠 Мозг</h1><div class="sub">Вход в твою базу</div></div></div>`+card(s?'Код из письма':'Вход по почте',s?`<p class="sub" style="margin:0 0 10px">Отправил код на ${esc(s)}. Введи цифры из письма.</p><div class="stack"><input class="field" id="lCode" inputmode="numeric" autocomplete="one-time-code" placeholder="Код из письма"><button class="btn" data-act="verifyCode">Войти</button><button class="btn ghost" data-act="otpBack">Другая почта</button></div>`:`<p class="sub" style="margin:0 0 10px">Пришлю одноразовый код. Вход сохранится на этом устройстве.</p><div class="stack"><input class="field" id="lEmail" type="email" autocomplete="email" placeholder="Почта" value="${esc(LS.get('email',''))}"><button class="btn" data-act="sendCode">Получить код</button></div>`)}
+
 /* ===== Подключение ===== */
 function vConnect(){return `<div class="top rise"><div><h1 class="title">🧠 Мозг</h1><div class="sub">Подключи свой сервер</div></div></div>${card('Подключи таблицу',`<p class="sub" style="margin:0 0 10px">Вставь ссылку <b>/exec</b> из Apps Script и ключ приложения из журнала (функция <b>setup</b>).</p><div class="stack"><input class="field" id="cUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"><input class="field" id="cKey" placeholder="Ключ приложения" autocomplete="off"><button class="btn" data-act="connect">Подключить</button></div>`)}`}
 async function connect(){
@@ -763,16 +895,16 @@ async function connect(){
 const SAMPLE=Object.assign(async p=>one({action:'ai',prompt:p}),{json:async p=>{const r=await one({action:'ai',prompt:p,json:true});try{return JSON.parse(r.text)}catch(e){const m=r.text.match(/\[[\s\S]*\]|\{[\s\S]*\}/);return m?JSON.parse(m[0]):null}}});
 
 /* ===== Рендер ===== */
-const VIEWS={today:vToday,work:vWork,blog:vBlog,hits:vHits,biz:vBiz,me:vMe};
+const VIEWS={now:vNow,prog:vProg,today:vToday,work:vWork,blog:vBlog,hits:vHits,biz:vBiz,me:vMe};
 function render(){
   const f=document.activeElement&&document.activeElement.id,val=f&&document.activeElement.value;
   const keep={};document.querySelectorAll('#view input.field,#view textarea.field').forEach(e=>{if(e.id)keep[e.id]=e.value});
-  $('#view').innerHTML=S.conn?VIEWS[S.view]():vConnect();
-  $('#nav').style.display=S.conn?'':'none';
+  $('#view').innerHTML=S.auth?(SUB.includes(S.view)?'<button class="backL" data-act="go" data-v="prog">‹ Прогресс</button>':'')+VIEWS[S.view]():vLogin();
+  $('#nav').style.display=S.auth?'':'none';
   Object.keys(keep).forEach(id=>{const e=document.getElementById(id);if(e&&keep[id])e.value=keep[id]});
   if(f){const e=document.getElementById(f);if(e){e.focus();try{e.setSelectionRange(val.length,val.length)}catch(x){}}}
-  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===S.view));
-  const nf=(S.finds||[]).filter(x=>x.dec==='Новая'||!x.dec).length;$('#nav a[data-v=hits]').classList.toggle('dot',nf>0);
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===S.view||(a.dataset.v==='prog'&&SUB.includes(S.view))));
+  const nf=(S.finds||[]).filter(x=>x.dec==='Новая'||!x.dec).length+recentDone().length;$('#nav a[data-v=prog]').classList.toggle('dot',nf>0);
     tick();
   if(S.sheet)renderSheet();
 }
@@ -783,7 +915,7 @@ setInterval(tick,1000);
 function openSheet(s){S.sheet=s;$('#sheetWrap').hidden=false;renderSheet()}
 function closeSheet(){S.sheet=null;$('#sheetWrap').hidden=true}
 function renderSheet(){
-  const s=S.sheet;let h='<div class="grab"></div>';
+  const s=S.sheet;let h='<div class="grab"></div>';const keepAdd=$('#addT')?$('#addT').value:'';
   if(s.type==='task'){const t=(S.tasks||[]).find(x=>x.row===s.row);if(!t)return closeSheet();
     h+=`<div class="row"><span class="pill">${esc(t.id)} · ${esc(t.epicName)}</span><span class="pill white">${esc(t.st)}</span></div><h2 style="margin:0;font-weight:500;font-size:20px">${esc(t.title)}</h2>
     <div class="sub">${esc(t.owner)}${t.team?' + '+esc(t.team):''} · ${esc(t.dept)} · DL ${t.dl?esc(toRu(t.dl)):'—'}${t.moves?' · переносов '+t.moves:''}</div>
@@ -795,8 +927,8 @@ function renderSheet(){
     ${['Я','Сервис','Продукт'].map(n=>`<div><div class="lbl" style="margin-bottom:0">${n}</div>${col(n).map(t=>taskRow(t)).join('')||'<p class="empty">—</p>'}</div>`).join('')}
     <div class="lbl">Режим</div><div class="chips">${['Веду','Участвую','Наблюдаю'].map(m=>`<button class="chip ${p.mode===m?'on all':''}" data-act="projMode" data-id="${esc(p.id)}" data-m="${m}">${m}</button>`).join('')}</div>
     <button class="btn ghost" data-act="projCopy" data-id="${esc(p.id)}">Скопировать статус</button>`;
-  }else if(s.type==='settings'){h+=`<h2 style="margin:0;font-weight:500;font-size:20px">Настройки</h2><div class="sub">Сервер: ${esc((S.conn&&S.conn.url||'').replace(/^https:\/\/script.google.com\/macros\/s\//,'…/').slice(0,48))}</div><div class="sub">Синхронизация: ${S.syncedAt?esc(new Date(S.syncedAt).toLocaleString('ru')):'—'}</div><div class="sub">ИИ: ${S.sample?'включён':'в версии Claude'}</div><button class="btn ghost" data-act="refresh">Обновить данные</button><button class="btn danger" data-act="disconnect">Отключить</button>`;
-  }else if(s.type==='quest'){const q=(S.quests||[]).find(x=>x.url===s.url);if(!q)return closeSheet();const sp=SPH.find(x=>x[0]===q.s),nu=notionUrl(q.url),xp=XP[q.k]||0;
+  }else if(s.type==='settings'){h+=`<h2 style="margin:0;font-weight:500;font-size:20px">Настройки</h2><div class="sub">База: Supabase · ${esc(S.auth&&S.auth.email||'')}</div><div class="sub">Синхронизация: ${S.syncedAt?esc(new Date(S.syncedAt).toLocaleString('ru')):'—'}</div><div class="sub">Сервер Apps Script: ${S.conn?'подключён — запись в рабочую таблицу и дубль в Notion':'не подключён — рабочие задачи только для чтения'}</div>${S.conn?'':`<input class="field" id="cUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"><input class="field" id="cKey" placeholder="Ключ приложения" autocomplete="off"><button class="btn ghost" data-act="connect">Подключить сервер</button>`}<button class="btn ghost" data-act="refresh">Обновить данные</button>${S.conn?'<button class="btn ghost" data-act="disconnect">Отключить сервер</button>':''}<button class="btn danger" data-act="logout">Выйти</button>`;
+  }else if(s.type==='quest'){const q=(S.quests||[]).find(x=>x.url===s.url);if(!q)return closeSheet();const sp=SPH.find(x=>x[0]===q.s),nu=q.nid?notionUrl(q.nid):'',xp=XP[q.k]||0;
     h+=`<div class="row"><span class="pill"${sp?` style="color:${sp[2]}"`:''}>${sp?esc(sp[1]):'Без сферы'}</span><span class="pill white">${esc(q.st||'В плане')}</span></div><h2 style="margin:0;font-weight:500;font-size:20px">${esc(q.t)}</h2>
     <div class="sub">${esc(q.k||'—')} · +${xp} XP${q.due?' · срок '+esc(toRu(String(q.due).slice(0,10))):''}${yes(q.td)?' · ★ на сегодня':''}</div>
     ${q.st!=='Готово'?`<button class="btn" data-act="questDone" data-url="${esc(q.url)}">Готово · +${xp} XP</button><button class="btn ghost" data-act="questToday" data-url="${esc(q.url)}" data-on="${yes(q.td)?1:0}">${yes(q.td)?'Убрать ★ с сегодня':'★ На сегодня'}</button>`:''}${nu?`<a class="btn ghost" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${esc(nu)}" target="_blank" rel="noopener">Открыть в Notion</a>`:''}`;
@@ -804,7 +936,17 @@ function renderSheet(){
     h+=`<h2 style="margin:0;font-weight:500;font-size:20px">${esc(x.t)}</h2><div class="chips">${HYP_ST.map(m=>`<button class="chip ${x.st===m?'on all':''}" data-act="hypSt" data-m="${m}">${m}</button>`).join('')}</div>
     ${[['test','Тест'],['metric','Метрика успеха'],['res','Результат'],['concl','Вывод']].map(f=>`<div class="lbl">${f[1]}</div><textarea class="field" id="hy_${f[0]}" style="min-height:60px">${esc(x[f[0]]||'')}</textarea>`).join('')}<div class="lbl">Доход ₸</div><input class="field" id="hy_inc" type="number" value="${esc(x.inc||'')}"><button class="btn" data-act="hypSave">Сохранить</button>`;
   }
+  else if(s.type==='add'){const ty=S.addType||'Задача',ag=S.addAg||'';
+    h+=`<h2 style="margin:0;font-weight:500;font-size:20px">Быстрая запись</h2><textarea class="field" id="addT" placeholder="Что в голове? Задача, идея, обещание…" style="min-height:96px;width:100%"></textarea>
+    <div class="chips"><button class="chip" data-act="voice">🎙 Голос</button>${['Задача','Идея','Обещание','Журнал'].map(m=>`<button class="chip ${ty===m?'on all':''}" data-act="addType" data-m="${m}">${m}</button>`).join('')}</div>
+    ${ty==='Задача'?`<div class="chips">${SPH.map(x=>`<button class="chip ${(S.addSph||'РАБота')===x[0]?'on all':''}" data-act="addSph" data-m="${esc(x[0])}">${x[1]}</button>`).join('')}</div>`:''}
+    <div class="lbl">Отправить агенту — необязательно</div><div class="chips">${AGENTS.map(a=>`<button class="chip ${ag===a?'on all':''}" data-act="addAg" data-m="${a}">${a}</button>`).join('')}</div>
+    <button class="btn" data-act="addSave">${ag?'Сохранить и отправить → '+esc(ag):'Сохранить'}</button>`;
+  }else if(s.type==='queue'){const q=(S.queue||[]).find(x=>x.id===s.id);if(!q)return closeSheet();
+    h+=`<div class="row"><span class="pill">${esc(q.agent)}</span><span class="pill white">${q.status==='done'?'готово':'ждёт'}</span></div><h2 style="margin:0;font-weight:500;font-size:20px">${esc(q.title||'')}</h2>${q.prompt?`<div class="lbl">Запрос</div><p style="white-space:pre-wrap;color:var(--soft);font-size:14px">${esc(q.prompt)}</p>`:''}${q.result?`<div class="lbl">Ответ</div><p style="white-space:pre-wrap">${esc(q.result)}</p><button class="btn ghost" data-act="copyQ" data-id="${esc(q.id)}">Скопировать ответ</button>`:`<p class="sub">Открой чат «${esc(q.agent)}» в проекте Claude «Мозг» — он заберёт запрос и вернёт ответ сюда.</p>`}`;
+  }
   $('#sheet').innerHTML=h;
+  if(keepAdd&&$('#addT'))$('#addT').value=keepAdd;
 }
 
 /* ===== Claude ===== */
@@ -832,6 +974,30 @@ async function act(name,el){
   case 'settings':openSheet({type:'settings'});break;
   case 'connect':connect();break;
   case 'disconnect':LS.set('conn',null);S.conn=null;closeSheet();render();break;
+  case 'logout':closeSheet();logout();break;
+  case 'sendCode':{const em=($('#lEmail').value||'').trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(em))return toast('Введи почту');try{await sbAuth('otp',{email:em,create_user:true});LS.set('email',em);S.otp=em;render();toast('Код отправлен на почту')}catch(e){toast(/rate|limit|seconds/i.test(e.message)?'Подожди минуту и попробуй снова':'Не отправилось: '+String(e.message).slice(0,80))}break}
+  case 'verifyCode':{const code=($('#lCode').value||'').replace(/\s/g,'');if(!code)return;try{saveSess(await sbAuth('verify',{type:'email',email:S.otp,token:code}));S.otp=null;toast('Вошёл ✓');render();loadAll()}catch(e){toast('Код не подошёл или устарел')}break}
+  case 'otpBack':S.otp=null;render();break;
+  case 'add':S.addType=S.addType||'Задача';openSheet({type:'add'});setTimeout(()=>{const x=$('#addT');if(x)x.focus()},60);break;
+  case 'addType':S.addType=d.m;renderSheet();break;
+  case 'addSph':S.addSph=d.m;renderSheet();break;
+  case 'addAg':S.addAg=S.addAg===d.m?'':d.m;renderSheet();break;
+  case 'voice':{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return toast('Нажми 🎤 на клавиатуре телефона');const r=new R();r.lang='ru-RU';r.onresult=e=>{const x=$('#addT');if(x)x.value=(x.value?x.value+' ':'')+e.results[0][0].transcript};r.onerror=()=>toast('Не расслышал');r.start();toast('Говори…');break}
+  case 'addSave':{const tx=(($('#addT')&&$('#addT').value)||'').trim();if(!tx)return toast('Напиши хоть пару слов');const ty=S.addType||'Задача',ag=S.addAg,ttl=tx.split('\n')[0].slice(0,120);
+    await guard(async()=>{let ref=null,rt=null;
+      if(ty==='Задача'){const r=await nCreate('quests',{'Квест':ttl,'Сфера':S.addSph||'РАБота','Тип':'Задача','Статус':'В плане','Герой':[C.HERO]});ref=r.id;rt='quests'}
+      else if(ty==='Идея'){const r=await nCreate('ideas',{'Название':ttl,'Вид':'Идея','Статус':'Сырая','Источник':'Свой','Заметки':tx});ref=r.id;rt='ideas'}
+      else if(ty==='Обещание'){ref='P'+Date.now().toString(36).slice(-5).toUpperCase();rt='promises';await appendRow(C.JB,'Обещания!A1',[ref,ru(new Date()),'Я обещал','',tx,'','','','Открыт',''])}
+      else await appendRow(C.JB,'Журнал!A1',['L'+Date.now().toString(36).slice(-6).toUpperCase(),ru(new Date()),'','','',tx,'','Мозг','']);
+      if(ag)await toAgent(ag,ttl,tx,rt,ref);
+      S.addAg='';closeSheet();loadAll()},ag?`Сохранил и отправил → ${ag}`:'Сохранил ✓');break}
+  case 'focusGo':{const n=nextAction();LS.set('timer',{start:Date.now(),what:n?n.title:''});render();toast('Фокус: 25 минут. Телефон — экраном вниз');break}
+  case 'nowDone':{const n=nextAction();if(!n)return;if(n.kind==='quest')await act('questDone',{dataset:{url:n.it.url}});else await act('taskDone',{dataset:{row:String(n.it.row)}});break}
+  case 'agent':{const n=nextAction();if(!n)return;const a=d.a,it=n.it;const pr=n.kind==='task'?`${it.id} ${it.title}\nСтатус: ${it.st}${it.dl?', DL '+toRu(it.dl):''}${it.next?'\nСледующий шаг: '+it.next:''}${it.block?'\nБлокер: '+it.block:''}${it.goal?'\nЦель: '+it.goal:''}`:`Квест: ${it.t} (${it.s||''}, ${it.k||''}${it.due?', срок '+toRu(it.due):''})`;
+    await guard(()=>toAgent(a,n.title,pr,n.kind==='task'?'work_tasks':'quests',n.kind==='task'?it.id:it.url),`→ ${a}: открой этот чат в проекте Мозг`);render();break}
+  case 'goEve':S.mode='eve';S.view='today';render();window.scrollTo(0,0);break;
+  case 'qOpen':openSheet({type:'queue',id:d.id});break;
+  case 'copyQ':{const q=(S.queue||[]).find(x=>x.id===d.id);if(q)copy(q.result||'');break}
   case 'mode':S.mode=d.m;render();break;
   case 'work':S.work=d.w;render();break;
   case 'close':closeSheet();break;
@@ -923,12 +1089,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.sheet)closeSheet(
 /* ===== Старт ===== */
 (function init(){
   const h=(location.hash||'').slice(1);if(VIEWS[h])S.view=h;
-  S.conn=LS.get('conn',null);
+  S.conn=LS.get('conn',null);S.auth=LS.get('auth',null);
+  const mh=(location.hash||'').match(/access_token=([^&]+).*refresh_token=([^&]+)/)||(location.hash||'').match(/refresh_token=([^&]+).*access_token=([^&]+)/);
+  if(mh&&/access_token/.test(location.hash)){const p=new URLSearchParams(location.hash.slice(1));saveSess({access_token:p.get('access_token'),refresh_token:p.get('refresh_token'),expires_in:p.get('expires_in')});history.replaceState(null,'',location.pathname);S.view='now'}
   const c=LS.get('cache',null);if(c&&c.data){Object.assign(S,c.data);S.syncedAt=c.at}
   render();
   setTimeout(()=>{const sp=$('#splash');if(sp){sp.classList.add('out');setTimeout(()=>sp.remove(),600)}},700);
-  if(S.conn){fetch(S.conn.url).then(r=>r.json()).then(j=>{S.sample=j.ai?SAMPLE:null;render()}).catch(()=>{});loadAll()}
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.conn&&Date.now()-(S.syncedAt||0)>120000)loadAll()});
+  if(S.auth)loadAll();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.auth&&Date.now()-(S.syncedAt||0)>60000)loadAll()});
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 
