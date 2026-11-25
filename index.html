@@ -320,6 +320,14 @@ html,body,button,input,textarea,select{font-family:'Golos Text',system-ui,-apple
 .tile.go{border:0;text-align:left;color:var(--text);cursor:pointer;font:inherit}
 .hub{padding:6px 14px}.hubI{display:flex;align-items:center;gap:12px;width:100%;background:none;border:0;border-top:1px solid #2A2A2E;padding:12px 0;color:var(--text);text-align:left;cursor:pointer;font:inherit}
 .hubI:first-child{border-top:0}.hubI .hi{font-size:22px;width:30px;text-align:center}.hubI .t{flex:1;min-width:0}.hubI b{font-weight:500;display:block}.hubI small{color:var(--muted)}.hubI .ar{color:var(--muted);font-size:22px}
+.nowT{display:flex;align-items:flex-start;gap:6px;width:100%;background:none;border:0;color:var(--text);text-align:left;cursor:pointer;font-family:inherit;padding:0}.nowT .ed{color:#F4A7B9;font-size:22px;line-height:1}
+.skipL{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;margin-top:10px;padding:0;cursor:pointer}
+.task.mini{min-height:44px}.task.mini .t{padding:7px 0;font-size:14px}.task.mini .btn.sm{padding:6px 12px}
+.qd summary{color:var(--muted);font-size:13px;cursor:pointer}.qd p{white-space:pre-wrap;color:var(--soft);font-size:13px;max-height:20vh;overflow:auto;margin:6px 0 0}
+.qres{white-space:pre-wrap;font-size:14px;line-height:1.45;max-height:42vh;overflow:auto;background:rgba(255,255,255,.04);border-radius:14px;padding:12px}
+.qT{font-size:18px;font-weight:500;min-height:0;resize:none}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lvl{display:flex;align-items:center;gap:10px;width:100%;background:rgba(26,26,28,.8);border:0;border-radius:18px;padding:12px 14px;margin-bottom:12px;color:var(--text);font:inherit;cursor:pointer}.lvl b{font-weight:600;white-space:nowrap}.lvl .bar{flex:1;margin:0}.lvl small{color:var(--muted);white-space:nowrap;font-size:12px}
 .backL{background:none;border:0;color:#F4A7B9;font:inherit;font-size:14px;padding:4px 0 8px;cursor:pointer}
 </style>
 </head>
@@ -837,34 +845,38 @@ function vMe(){
 const AGENTS=['Мозг','Секретарь','ТЗ-писатель','Стратег','Продюсер','Сценарист','Монтажёр','Продажник'];
 const SUB=['today','work','blog','hits','biz','me'];
 function agentFor(n){const t=String(n.title||'');if(n.sph==='РАБота')return /тз/i.test(t)?'ТЗ-писатель':'Стратег';if(n.sph==='Popularity блог')return /сценари|хук|истори|серия/i.test(t)?'Сценарист':/сним|съёмк|монтаж/i.test(t)?'Монтажёр':'Продюсер';if(n.sph==='Бизнес ИИ')return 'Продажник';return 'Мозг'}
+const skipped=()=>{const k=LS.get('skip',{});return k.d===today()?k.ids:[]};
 function nextAction(){
-  const t=today(),qs=(S.quests||[]).filter(q=>q.st!=='Готово'&&q.k!=='Босс');
+  const t=today(),sk=skipped(),qs=(S.quests||[]).filter(q=>q.st!=='Готово'&&q.k!=='Босс'&&!sk.includes(q.url));
   const q=qs.find(q=>q.st==='В бою'&&yes(q.td))||qs.find(q=>yes(q.td))||qs.find(q=>q.due&&q.due<=t&&q.k!=='Эпик');
   if(q){const sp=SPH.find(s=>s[0]===q.s);return {kind:'quest',it:q,sph:q.s,title:q.t,meta:`${sp?sp[1]:'Квест'} · ${q.k||'Задача'} · +${XP[q.k]||0} XP${q.due?' · срок '+short(q.due):''}`}}
-  const w=(S.tasks||[]).filter(x=>myTask(x)&&open(x)).sort((a,b)=>(a.dl||'9')<(b.dl||'9')?-1:1)[0];
+  const w=(S.tasks||[]).filter(x=>myTask(x)&&open(x)&&!sk.includes(x.id)).sort((a,b)=>(a.dl||'9')<(b.dl||'9')?-1:1)[0];
   if(w)return {kind:'task',it:w,sph:'РАБота',title:w.id+' · '+w.title,meta:`Работа · ${w.st}${w.dl?' · DL '+short(w.dl)+(overdue(w.dl)?' · просрочено':''):''}`};
   return null;
 }
-function topQuests(){const t=today();const top=(S.quests||[]).filter(q=>q.st!=='Готово'&&(yes(q.td)||(q.due&&q.due<=t&&q.k!=='Босс'&&q.k!=='Эпик'))).sort((a,b)=>(yes(b.td)-yes(a.td))||((a.due||'9')<(b.due||'9')?-1:1));const pick=ss=>top.find(q=>ss.includes(q.s));return [pick(['РАБота']),pick(['Popularity блог']),pick(['Бизнес ИИ','Личная жизнь'])].filter(Boolean)}
+function topQuests(){const t=today(),sk=skipped(),q=(S.quests||[]).filter(q=>q.st!=='Готово'&&q.k!=='Босс'&&q.k!=='Эпик'&&!sk.includes(q.url));
+  const a=q.filter(x=>yes(x.td)||(x.due&&x.due<=t)).sort((x,y)=>(yes(y.td)-yes(x.td))||((x.due||'9')<(y.due||'9')?-1:1));
+  const b=q.filter(x=>x.st==='В бою'&&!a.includes(x));return a.concat(b).slice(0,3)}
 function goalTiles(d){
   const t=today(),fl=followers(),last=fl.length?+fl[fl.length-1].n:0,g=goalNow(last),days=Math.max(1,Math.ceil((new Date(g[1]+'T23:59:59')-new Date())/864e5)),per=Math.max(0,Math.ceil((g[0]-last)/days));
   const L=LADDER.biz,bt=Math.min(stepTot('biz'),L.length),m=t.slice(0,7),month=(S.clients||[]).filter(c=>c.st==='Оплатил'&&(c.d||'').slice(0,7)===m).reduce((a,c)=>a+(+c.sum||0),0);
   return `<div class="grid2 rise" style="--d:${d||0}s;margin-bottom:12px"><button class="tile go" data-act="go" data-v="hits"><small class="sub">Подписчики</small><div class="mid">${last.toLocaleString('ru')}</div><small class="sub">до ${g[0].toLocaleString('ru')} · ${days} дн. · +${per}/день</small><div class="bar thin" style="margin-top:8px"><i style="width:${Math.min(100,last/g[0]*100)}%"></i></div></button><button class="tile go" data-act="go" data-v="biz"><small class="sub">Бизнес</small><div class="mid">${month.toLocaleString('ru')} ₸</div><small class="sub">шаг ${bt}/${L.length} к первой оплате</small><div class="bar thin" style="margin-top:8px"><i style="width:${bt/L.length*100}%"></i></div></button></div>`;
 }
 const recentDone=()=>(S.queue||[]).filter(q=>q.status==='done'&&Date.now()-new Date(q.done_at||q.updated_at).getTime()<48*3600e3);
-function qRow(q){return `<div class="task"><button class="t" data-act="qOpen" data-id="${esc(q.id)}"><span class="clamp1">${q.status==='done'?'✅':'⏳'} ${esc(q.agent)} · ${esc(q.title||'')}</span><small class="clamp2">${esc(q.status==='done'?(q.result||'').slice(0,140):'ждёт — открой чат «'+q.agent+'» в проекте Мозг')}</small></button></div>`}
+function qRow(q){return `<div class="task"><button class="t" data-act="qOpen" data-id="${esc(q.id)}"><span class="clamp1">${q.status==='done'?'✅':'⏳'} ${esc(q.agent)} · ${esc(q.title||'')}</span><small class="clamp1">${esc(q.status==='done'?(q.result||'').slice(0,140):'ждёт — открой чат «'+q.agent+'» в проекте Мозг')}</small></button></div>`}
+function stepMini(k){const L=LADDER[k],t=stepTot(k),s=stepNow(k),fin=k==='biz'&&t>=L.length;if(fin)return '';return `<div class="task mini"><div class="t"><span class="clamp1">${s[0]} ${esc(s[1])}</span><small class="clamp1">${k==='blog'?'Блог':'Бизнес'} · ${s[2]} мин · +5 XP</small></div><button class="btn sm" data-act="stepGo" data-k="${k}">▶</button><button class="more" data-act="stepDone" data-k="${k}" title="Сделал">✓</button></div>`}
 function vNow(){
   const d=new Date(),n=nextAction(),eve=d.getHours()>=17,t=today();
   let h=head('Сейчас',`${WD[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]} · ${eve?'вечер':d.getHours()<12?'утро':'день'} · 🔥 ${streak()} дн.`);
   if(!S.quests&&!S.tasks)return h+wait;
-  h+=n?`<section class="card nowC rise"><div class="lbl">Следующее действие</div><h2 class="nowT">${esc(n.title)}</h2><div class="sub">${esc(n.meta)}</div><div class="nowB"><button class="btn" data-act="focusGo">▶ Фокус 25 мин</button><button class="btn ghost" data-act="nowDone" aria-label="Готово">✓</button><button class="btn ghost" data-act="agent" data-a="${esc(agentFor(n))}">→ ${esc(agentFor(n))}</button></div></section>`
+  h+=n?`<section class="card nowC rise"><div class="lbl">Следующее действие</div><button class="nowT" data-act="nowOpen">${esc(n.title)}<span class="ed">›</span></button><div class="sub">${esc(n.meta)}</div><div class="nowB"><button class="btn" data-act="focusGo">▶ Фокус 25 мин</button><button class="btn ghost" data-act="nowDone" aria-label="Готово">✓</button><button class="btn ghost" data-act="agent" data-a="${esc(agentFor(n))}">→ ${esc(agentFor(n))}</button></div><button class="skipL" data-act="nowSkip">Пропустить на сегодня ↷</button></section>`
     :card('Следующее действие','<p class="empty">Всё закрыто 👌 Отметь ☆ у квеста или запиши новое через «+».</p>');
   const nx=(S.cal||[]).find(e=>new Date(e.end.dateTime)>d);
   if(nx){const mins=Math.round((new Date(nx.start.dateTime)-d)/60000);h+=`<section class="card rise meetC" style="--d:.04s"><div class="tm">${hm(nx.start.dateTime)}</div><div class="t"><span class="clamp1">${esc(nx.summary||'Встреча')}</span><small class="sub">${mins>0?'через '+mins+' мин':'идёт сейчас'}</small></div><button class="edit" data-act="go" data-v="today">Подготовка</button></section>`}
   const od=(S.tasks||[]).filter(x=>myTask(x)&&open(x)&&overdue(x.dl)).length+(S.prom||[]).filter(p=>p.st!=='Сделано'&&p.due&&p.due<t).length;
-  h+=card('🎯 3 главные',(topQuests().map(questRow).join('')||'<p class="empty">Отметь ☆ у трёх квестов: работа, блог, бизнес.</p>')+(od?`<button class="edit" data-act="go" data-v="today" style="margin-top:8px;color:var(--red)">🔥 Просрочено: ${od} →</button>`:''),'',.06);
-  h+=card(eve?'🪜 Шаги на вечер':'🪜 Шаг после работы',stepRow('blog')+(eve?stepRow('biz'):''),'',.1);
-  const rd=recentDone();if(rd.length)h+=card('🤖 Ответы агентов',rd.slice(0,3).map(qRow).join(''),'',.12);
+  const tq=topQuests().filter(q=>!(n&&n.kind==='quest'&&n.it.url===q.url)).slice(0,2);h+=card('🎯 Дальше на сегодня',(tq.map(questRow).join('')||'<p class="empty">Отметь ★ ещё у пары задач — они появятся здесь.</p>')+(od?`<button class="edit" data-act="go" data-v="today" style="margin-top:8px;color:var(--red)">🔥 Просрочено: ${od} →</button>`:''),'',.06);
+  h+=card('🪜 Шаги по 10–15 минут',stepMini('blog')+stepMini('biz'),'',.1);
+  const rd=recentDone();if(rd.length)h+=card('🤖 Ответы агентов',rd.slice(0,2).map(qRow).join('')+(rd.length>2?`<button class="edit" data-act="qList" style="margin-top:6px">Все ответы: ${rd.length} →</button>`:''),'',.12);
   h+=goalTiles(.14);
   h+=eve?`<button class="btn" data-act="goEve" style="width:100%">🌙 Итог дня и план на завтра</button>`:`<button class="btn ghost" data-act="go" data-v="today" style="width:100%">Весь день: встречи, задачи, просрочка →</button>`;
   return h;
@@ -873,11 +885,10 @@ function vProg(){
   const st=heroStats(),rs=reelStats(),nf=(S.finds||[]).filter(x=>x.dec==='Новая'||!x.dec).length;
   const mine=(S.tasks||[]).filter(x=>myTask(x)&&open(x)),od=mine.filter(x=>overdue(x.dl)).length,lead=(S.proj||[]).filter(p=>p.mode==='Веду'&&p.st!=='Регулярно').length;
   let h=head('Прогресс','Цели, разделы и награды');
-  h+=card(`🦸 Уровень ${st.lvl}`,`<div class="sub">${st.xp} XP · до следующего ${250-st.xp%250} XP · монет ${st.coins}</div><div class="bar" style="margin-top:10px"><i style="width:${st.prog*100}%"></i></div>`);
+  h+=`<button class="lvl rise" data-act="go" data-v="me"><b>Ур. ${st.lvl}</b><span class="bar thin"><i style="width:${st.prog*100}%"></i></span><small>${st.xp} XP · ещё ${250-st.xp%250}</small></button>`;
   h+=goalTiles(.04);
-  const T=[['today','☀️','День',S.mode==='eve'?'Вечерний итог, журнал, план на завтра':'Встречи, просрочка, мои задачи'],['work','🏢','Работа',`${mine.length} задач · ${od} просрочено · «Веду» ${lead}/5`],['hits','🔥','Залёты',`${rs.hits.length} залётов${nf?' · новых находок: '+nf:''}`],['blog','🎤','Блог','Идеи, сценарии, конвейер'],['biz','⚒️','Бизнес','Гипотезы, клиенты, доход'],['me','🙂','Я','Привычки, квесты, магазин, ачивки']];
-  h+=`<section class="card rise hub" style="--d:.08s">${T.map(x=>`<button class="hubI" data-act="go" data-v="${x[0]}"><span class="hi">${x[1]}</span><span class="t"><b>${x[2]}</b><small class="clamp1">${esc(x[3])}</small></span><span class="ar">›</span></button>`).join('')}</section>`;
-  const q=S.queue||[];if(q.length)h+=card('🤖 Запросы агентам',q.slice(0,8).map(qRow).join(''),`<span class="pill">${q.filter(x=>x.status!=='done').length} ждут</span>`,.12);
+  const T=[['today','☀️','День',S.mode==='eve'?'Вечерний итог, журнал, план на завтра':'Встречи, просрочка, мои задачи'],['work','🏢','Работа',`${mine.length} задач · ${od} просрочено · «Веду» ${lead}/5`],['hits','🔥','Залёты',`${rs.hits.length} залётов${nf?' · новых находок: '+nf:''}`],['blog','🎤','Блог','Идеи, сценарии, конвейер'],['biz','⚒️','Бизнес','Гипотезы, клиенты, доход'],['me','🙂','Я','Привычки, квесты, магазин, ачивки'],['@q','🤖','Запросы агентам',(()=>{const q=S.queue||[],w=q.filter(x=>x.status!=='done').length;return q.length?`${w} ждут · ${q.length-w} готово`:'Пока пусто — отправляй через «+»'})()]];
+  h+=`<section class="card rise hub" style="--d:.08s">${T.map(x=>`<button class="hubI" ${x[0]==='@q'?'data-act="qList"':`data-act="go" data-v="${x[0]}"`}><span class="hi">${x[1]}</span><span class="t"><b>${x[2]}</b><small class="clamp1">${esc(x[3])}</small></span><span class="ar">›</span></button>`).join('')}</section>`;
   return h;
 }
 function vLogin(){
@@ -931,10 +942,16 @@ function renderSheet(){
     <div class="lbl">Режим</div><div class="chips">${['Веду','Участвую','Наблюдаю'].map(m=>`<button class="chip ${p.mode===m?'on all':''}" data-act="projMode" data-id="${esc(p.id)}" data-m="${m}">${m}</button>`).join('')}</div>
     <button class="btn ghost" data-act="projCopy" data-id="${esc(p.id)}">Скопировать статус</button>`;
   }else if(s.type==='settings'){h+=`<h2 style="margin:0;font-weight:500;font-size:20px">Настройки</h2><div class="sub">База: Supabase · ${esc(S.auth&&S.auth.email||'')}</div><div class="sub">Синхронизация: ${S.syncedAt?esc(new Date(S.syncedAt).toLocaleString('ru')):'—'}</div><div class="sub">Сервер Apps Script: ${S.conn?'подключён — запись в рабочую таблицу и дубль в Notion':'не подключён — рабочие задачи только для чтения'}</div>${S.conn?'':`<input class="field" id="cUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"><input class="field" id="cKey" placeholder="Ключ приложения" autocomplete="off"><button class="btn ghost" data-act="connect">Подключить сервер</button>`}<button class="btn ghost" data-act="refresh">Обновить данные</button>${S.conn?'<button class="btn ghost" data-act="disconnect">Отключить сервер</button>':''}<button class="btn danger" data-act="logout">Выйти</button>`;
-  }else if(s.type==='quest'){const q=(S.quests||[]).find(x=>x.url===s.url);if(!q)return closeSheet();const sp=SPH.find(x=>x[0]===q.s),nu=q.nid?notionUrl(q.nid):'',xp=XP[q.k]||0;
-    h+=`<div class="row"><span class="pill"${sp?` style="color:${sp[2]}"`:''}>${sp?esc(sp[1]):'Без сферы'}</span><span class="pill white">${esc(q.st||'В плане')}</span></div><h2 style="margin:0;font-weight:500;font-size:20px">${esc(q.t)}</h2>
-    <div class="sub">${esc(q.k||'—')} · +${xp} XP${q.due?' · срок '+esc(toRu(String(q.due).slice(0,10))):''}${yes(q.td)?' · ★ на сегодня':''}</div>
-    ${q.st!=='Готово'?`<button class="btn" data-act="questDone" data-url="${esc(q.url)}">Готово · +${xp} XP</button><button class="btn ghost" data-act="questToday" data-url="${esc(q.url)}" data-on="${yes(q.td)?1:0}">${yes(q.td)?'Убрать ★ с сегодня':'★ На сегодня'}</button>`:''}${nu?`<a class="btn ghost" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${esc(nu)}" target="_blank" rel="noopener">Открыть в Notion</a>`:''}`;
+  }else if(s.type==='quest'){const q=(S.quests||[]).find(x=>x.url===s.url);if(!q)return closeSheet();const nu=q.nid?notionUrl(q.nid):'',xp=XP[q.k]||0,e=S.qe&&S.qe.url===q.url?S.qe:{};
+    h+=`<textarea class="field qT" id="qeT" rows="2">${esc(q.t)}</textarea>
+    <div class="chips">${['В плане','В бою','Готово'].map(m=>`<button class="chip ${(e.qeSt||q.st||'В плане')===m?'on all':''}" data-act="qeSt" data-m="${m}">${m}</button>`).join('')}</div>
+    <div class="chips">${SPH.map(x=>`<button class="chip ${(e.qeSph||q.s)===x[0]?'on all':''}" data-act="qeSph" data-m="${esc(x[0])}">${x[1]}</button>`).join('')}</div>
+    <div class="chips">${Object.keys(XP).map(k=>`<button class="chip ${(e.qeK||q.k)===k?'on all':''}" data-act="qeK" data-m="${k}">${k} ${XP[k]}</button>`).join('')}</div>
+    <div class="inline" style="margin-top:0"><span class="sub" style="flex:0 0 auto;align-self:center">Срок</span><input class="field" type="date" id="qeDue" value="${esc(String(q.due||'').slice(0,10))}"></div>
+    <button class="btn" data-act="qeSave">Сохранить</button>
+    <div class="row2"><button class="btn ghost" data-act="questToday" data-url="${esc(q.url)}" data-on="${yes(q.td)?1:0}">${yes(q.td)?'Убрать ★':'★ На сегодня'}</button><button class="btn ghost" data-act="qeDrop">Убрать из плана</button></div>
+    <div class="row2"><button class="btn ghost" data-act="qeAgent">→ ${esc(agentFor({title:q.t,sph:q.s}))}</button>${nu?`<a class="btn ghost" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="${esc(nu)}" target="_blank" rel="noopener">Notion</a>`:''}</div>
+    <small class="sub">+${xp} XP за выполнение</small>`;
   }else if(s.type==='hyp'){const x=(S.hyp||[]).find(y=>y.url===s.url);if(!x)return closeSheet();
     h+=`<h2 style="margin:0;font-weight:500;font-size:20px">${esc(x.t)}</h2><div class="chips">${HYP_ST.map(m=>`<button class="chip ${x.st===m?'on all':''}" data-act="hypSt" data-m="${m}">${m}</button>`).join('')}</div>
     ${[['test','Тест'],['metric','Метрика успеха'],['res','Результат'],['concl','Вывод']].map(f=>`<div class="lbl">${f[1]}</div><textarea class="field" id="hy_${f[0]}" style="min-height:60px">${esc(x[f[0]]||'')}</textarea>`).join('')}<div class="lbl">Доход ₸</div><input class="field" id="hy_inc" type="number" value="${esc(x.inc||'')}"><button class="btn" data-act="hypSave">Сохранить</button>`;
@@ -946,7 +963,8 @@ function renderSheet(){
     <div class="lbl">Отправить агенту — необязательно</div><div class="chips">${AGENTS.map(a=>`<button class="chip ${ag===a?'on all':''}" data-act="addAg" data-m="${a}">${a}</button>`).join('')}</div>
     <button class="btn" data-act="addSave">${ag?'Сохранить и отправить → '+esc(ag):'Сохранить'}</button>`;
   }else if(s.type==='queue'){const q=(S.queue||[]).find(x=>x.id===s.id);if(!q)return closeSheet();
-    h+=`<div class="row"><span class="pill">${esc(q.agent)}</span><span class="pill white">${q.status==='done'?'готово':'ждёт'}</span></div><h2 style="margin:0;font-weight:500;font-size:20px">${esc(q.title||'')}</h2>${q.prompt?`<div class="lbl">Запрос</div><p style="white-space:pre-wrap;color:var(--soft);font-size:14px">${esc(q.prompt)}</p>`:''}${q.result?`<div class="lbl">Ответ</div><p style="white-space:pre-wrap">${esc(q.result)}</p><button class="btn ghost" data-act="copyQ" data-id="${esc(q.id)}">Скопировать ответ</button>`:`<p class="sub">Открой чат «${esc(q.agent)}» в проекте Claude «Мозг» — он заберёт запрос и вернёт ответ сюда.</p>`}`;
+    h+=`<div class="row"><span class="pill">${esc(q.agent)}</span><span class="pill white">${q.status==='done'?'готово':'ждёт'}</span></div><h2 style="margin:0;font-weight:500;font-size:18px">${esc(q.title||'')}</h2>${q.prompt&&q.prompt!==q.title?`<details class="qd"><summary>Запрос</summary><p>${esc(q.prompt)}</p></details>`:''}${q.result?`<div class="qres">${esc(q.result)}</div><button class="btn ghost" data-act="copyQ" data-id="${esc(q.id)}">Скопировать ответ</button>`:`<p class="sub">Открой чат «${esc(q.agent)}» в проекте Claude «Мозг» — он заберёт запрос и вернёт ответ сюда.</p>`}`;
+  }else if(s.type==='qlist'){const q=S.queue||[];h+=`<h2 style="margin:0;font-weight:500;font-size:20px">Запросы агентам</h2>${q.map(qRow).join('')||'<p class="empty">Пока пусто. Отправь задачу агенту через «+» или кнопкой «→ агент».</p>'}`;
   }
   $('#sheet').innerHTML=h;
   if(keepAdd&&$('#addT'))$('#addT').value=keepAdd;
@@ -1002,6 +1020,14 @@ async function act(name,el){
     await guard(()=>toAgent(a,n.title,pr,n.kind==='task'?'work_tasks':'quests',n.kind==='task'?it.id:it.url),`→ ${a}: открой этот чат в проекте Мозг`);render();break}
   case 'goEve':S.mode='eve';S.view='today';render();window.scrollTo(0,0);break;
   case 'qOpen':openSheet({type:'queue',id:d.id});break;
+  case 'qList':openSheet({type:'qlist'});break;
+  case 'nowOpen':{const n=nextAction();if(!n)return;if(n.kind==='quest')openSheet({type:'quest',url:n.it.url});else openSheet({type:'task',row:n.it.row});break}
+  case 'nowSkip':{const n=nextAction();if(!n)return;const k=LS.get('skip',{}),ids=k.d===t?k.ids:[];ids.push(n.kind==='quest'?n.it.url:n.it.id);LS.set('skip',{d:t,ids});render();toast('Пропустил до завтра');break}
+  case 'qeSt':case 'qeSph':case 'qeK':{const q=(S.quests||[]).find(x=>x.url===S.sheet.url);S.qe=Object.assign(S.qe&&S.qe.url===q.url?S.qe:{url:q.url},{[name]:d.m});const keepT=$('#qeT').value,keepD=$('#qeDue').value;renderSheet();$('#qeT').value=keepT;$('#qeDue').value=keepD;break}
+  case 'qeSave':{const q=(S.quests||[]).find(x=>x.url===S.sheet.url);const e=S.qe&&S.qe.url===q.url?S.qe:{};const pr={'Квест':$('#qeT').value.trim()||q.t,'date:Срок:start':$('#qeDue').value||''};if(e.qeSt)pr['Статус']=e.qeSt;if(e.qeSph)pr['Сфера']=e.qeSph;if(e.qeK)pr['Тип']=e.qeK;
+    await guard(async()=>{await nUpdate('quests',q.url,pr);Object.assign(q,{t:pr['Квест'],due:pr['date:Срок:start']||null},e.qeSt?{st:e.qeSt}:{},e.qeSph?{s:e.qeSph}:{},e.qeK?{k:e.qeK}:{});S.qe=null},'Сохранено');closeSheet();render();break}
+  case 'qeDrop':{const q=(S.quests||[]).find(x=>x.url===S.sheet.url);q.td='__NO__';q.st='В плане';q.due=null;closeSheet();render();await guard(()=>nUpdate('quests',q.url,{'Сегодня':'__NO__','Статус':'В плане','date:Срок:start':''}),'Убрал из плана — квест остался в списке');break}
+  case 'qeAgent':{const q=(S.quests||[]).find(x=>x.url===S.sheet.url);const a=agentFor({title:q.t,sph:q.s});await guard(()=>toAgent(a,q.t,`Квест: ${q.t} (${q.s||''}, ${q.k||''}${q.due?', срок '+toRu(String(q.due).slice(0,10)):''})`,'quests',q.url),`→ ${a}: открой этот чат в проекте Мозг`);closeSheet();render();break}
   case 'copyQ':{const q=(S.queue||[]).find(x=>x.id===d.id);if(q)copy(q.result||'');break}
   case 'mode':S.mode=d.m;render();break;
   case 'work':S.work=d.w;render();break;
