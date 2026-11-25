@@ -880,7 +880,10 @@ function vProg(){
   const q=S.queue||[];if(q.length)h+=card('🤖 Запросы агентам',q.slice(0,8).map(qRow).join(''),`<span class="pill">${q.filter(x=>x.status!=='done').length} ждут</span>`,.12);
   return h;
 }
-function vLogin(){const s=S.otp;return `<div class="top rise"><div><h1 class="title">🧠 Мозг</h1><div class="sub">Вход в твою базу</div></div></div>`+card(s?'Код из письма':'Вход по почте',s?`<p class="sub" style="margin:0 0 10px">Отправил код на ${esc(s)}. Введи цифры из письма.</p><div class="stack"><input class="field" id="lCode" inputmode="numeric" autocomplete="one-time-code" placeholder="Код из письма"><button class="btn" data-act="verifyCode">Войти</button><button class="btn ghost" data-act="otpBack">Другая почта</button></div>`:`<p class="sub" style="margin:0 0 10px">Пришлю одноразовый код. Вход сохранится на этом устройстве.</p><div class="stack"><input class="field" id="lEmail" type="email" autocomplete="email" placeholder="Почта" value="${esc(LS.get('email',''))}"><button class="btn" data-act="sendCode">Получить код</button></div>`)}
+function vLogin(){
+  if(S.needPass)return `<div class="top rise"><div><h1 class="title">🧠 Мозг</h1><div class="sub">Почта подтверждена ✓</div></div></div>`+card('Задай пароль',`<p class="sub" style="margin:0 0 10px">Им будешь входить в приложение с иконки. Не меньше 8 знаков.</p><div class="stack"><input class="field" id="lPass1" type="password" autocomplete="new-password" placeholder="Новый пароль"><button class="btn" data-act="setPass">Сохранить пароль</button></div>`);
+  const s=S.otp;
+  return `<div class="top rise"><div><h1 class="title">🧠 Мозг</h1><div class="sub">Вход в твою базу</div></div></div>`+(s?card('Проверь почту',`<p class="sub" style="margin:0">Отправил ссылку на ${esc(s)}. Открой письмо <b>на этом телефоне</b> и нажми «Sign in» или «Confirm» — откроется сайт, там задашь пароль. Потом вернись сюда и войди паролем.</p><button class="btn ghost" data-act="otpBack" style="margin-top:12px;width:100%">Назад ко входу</button>`):card('Вход',`<div class="stack"><input class="field" id="lEmail" type="email" autocomplete="email" placeholder="Почта" value="${esc(LS.get('email',''))}"><input class="field" id="lPass" type="password" autocomplete="current-password" placeholder="Пароль"><button class="btn" data-act="passLogin">Войти</button><button class="btn ghost" data-act="sendCode">Первый вход или забыл пароль — прислать ссылку</button></div>`))}
 
 /* ===== Подключение ===== */
 function vConnect(){return `<div class="top rise"><div><h1 class="title">🧠 Мозг</h1><div class="sub">Подключи свой сервер</div></div></div>${card('Подключи таблицу',`<p class="sub" style="margin:0 0 10px">Вставь ссылку <b>/exec</b> из Apps Script и ключ приложения из журнала (функция <b>setup</b>).</p><div class="stack"><input class="field" id="cUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"><input class="field" id="cKey" placeholder="Ключ приложения" autocomplete="off"><button class="btn" data-act="connect">Подключить</button></div>`)}`}
@@ -899,8 +902,8 @@ const VIEWS={now:vNow,prog:vProg,today:vToday,work:vWork,blog:vBlog,hits:vHits,b
 function render(){
   const f=document.activeElement&&document.activeElement.id,val=f&&document.activeElement.value;
   const keep={};document.querySelectorAll('#view input.field,#view textarea.field').forEach(e=>{if(e.id)keep[e.id]=e.value});
-  $('#view').innerHTML=S.auth?(SUB.includes(S.view)?'<button class="backL" data-act="go" data-v="prog">‹ Прогресс</button>':'')+VIEWS[S.view]():vLogin();
-  $('#nav').style.display=S.auth?'':'none';
+  $('#view').innerHTML=S.auth&&!S.needPass?(SUB.includes(S.view)?'<button class="backL" data-act="go" data-v="prog">‹ Прогресс</button>':'')+VIEWS[S.view]():vLogin();
+  $('#nav').style.display=S.auth&&!S.needPass?'':'none';
   Object.keys(keep).forEach(id=>{const e=document.getElementById(id);if(e&&keep[id])e.value=keep[id]});
   if(f){const e=document.getElementById(f);if(e){e.focus();try{e.setSelectionRange(val.length,val.length)}catch(x){}}}
   document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===S.view||(a.dataset.v==='prog'&&SUB.includes(S.view))));
@@ -975,7 +978,9 @@ async function act(name,el){
   case 'connect':connect();break;
   case 'disconnect':LS.set('conn',null);S.conn=null;closeSheet();render();break;
   case 'logout':closeSheet();logout();break;
-  case 'sendCode':{const em=($('#lEmail').value||'').trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(em))return toast('Введи почту');try{await sbAuth('otp',{email:em,create_user:true});LS.set('email',em);S.otp=em;render();toast('Код отправлен на почту')}catch(e){toast(/rate|limit|seconds/i.test(e.message)?'Подожди минуту и попробуй снова':'Не отправилось: '+String(e.message).slice(0,80))}break}
+  case 'passLogin':{const em=($('#lEmail').value||'').trim().toLowerCase(),pw=$('#lPass').value;if(!em||!pw)return toast('Почта и пароль');try{saveSess(await sbAuth('token?grant_type=password',{email:em,password:pw}));LS.set('email',em);toast('Вошёл ✓');render();loadAll()}catch(e){toast(/confirm/i.test(e.message)?'Сначала подтверди почту по ссылке':'Неверная почта или пароль')}break}
+  case 'setPass':{const pw=$('#lPass1').value;if(!pw||pw.length<8)return toast('Не меньше 8 знаков');try{const r=await fetch(SB.url+'/auth/v1/user',{method:'PUT',headers:{apikey:SB.key,Authorization:'Bearer '+await token(),'Content-Type':'application/json'},body:JSON.stringify({password:pw})});if(!r.ok)throw new Error(await r.text());S.needPass=false;toast('Пароль сохранён ✓ Входи им и в приложении с иконки');render();loadAll()}catch(e){toast('Не сохранилось: '+String(e.message).slice(0,80))}break}
+  case 'sendCode':{const em=($('#lEmail').value||'').trim().toLowerCase();if(!/^\S+@\S+\.\S+$/.test(em))return toast('Введи почту');try{await sbAuth('otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{email:em,create_user:true});LS.set('email',em);S.otp=em;render();toast('Ссылка отправлена на почту')}catch(e){toast(/rate|limit|seconds/i.test(e.message)?'Подожди минуту и попробуй снова':'Не отправилось: '+String(e.message).slice(0,80))}break}
   case 'verifyCode':{const code=($('#lCode').value||'').replace(/\s/g,'');if(!code)return;try{saveSess(await sbAuth('verify',{type:'email',email:S.otp,token:code}));S.otp=null;toast('Вошёл ✓');render();loadAll()}catch(e){toast('Код не подошёл или устарел')}break}
   case 'otpBack':S.otp=null;render();break;
   case 'add':S.addType=S.addType||'Задача';openSheet({type:'add'});setTimeout(()=>{const x=$('#addT');if(x)x.focus()},60);break;
@@ -1091,7 +1096,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&S.sheet)closeSheet(
   const h=(location.hash||'').slice(1);if(VIEWS[h])S.view=h;
   S.conn=LS.get('conn',null);S.auth=LS.get('auth',null);
   const mh=(location.hash||'').match(/access_token=([^&]+).*refresh_token=([^&]+)/)||(location.hash||'').match(/refresh_token=([^&]+).*access_token=([^&]+)/);
-  if(mh&&/access_token/.test(location.hash)){const p=new URLSearchParams(location.hash.slice(1));saveSess({access_token:p.get('access_token'),refresh_token:p.get('refresh_token'),expires_in:p.get('expires_in')});history.replaceState(null,'',location.pathname);S.view='now'}
+  if(mh&&/access_token/.test(location.hash)){const p=new URLSearchParams(location.hash.slice(1));saveSess({access_token:p.get('access_token'),refresh_token:p.get('refresh_token'),expires_in:p.get('expires_in')});S.needPass=true;history.replaceState(null,'',location.pathname);S.view='now'}
   const c=LS.get('cache',null);if(c&&c.data){Object.assign(S,c.data);S.syncedAt=c.at}
   render();
   setTimeout(()=>{const sp=$('#splash');if(sp){sp.classList.add('out');setTimeout(()=>sp.remove(),600)}},700);
