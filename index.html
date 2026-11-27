@@ -142,6 +142,13 @@ button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer;bo
 .tag.r{background:var(--rs);color:var(--r)}
 .dig{display:grid;grid-template-columns:1fr 1fr;gap:8px}.dg{border-radius:18px;padding:12px;background:var(--s);text-align:left}.dg i{font-style:normal;font-size:18px}.dg b{display:block;font-size:13px;margin:6px 0 3px}.dg small{font-size:11px;color:var(--mu);display:block;line-height:1.35}.dg em{display:inline-block;font-style:normal;margin-top:8px;font-size:11px;font-weight:700;color:var(--ac)}
 .wk{margin-top:12px;background:linear-gradient(150deg,var(--zs),var(--ws));border-radius:20px;padding:14px}.wk b{font-size:15px}.wk p{margin:4px 0 0;font-size:13px;color:var(--mu);line-height:1.4}.wk.fri{background:var(--ls)}.wk .btn{margin-top:10px}
+/* ===== Контекст и подталкивания ===== */
+.pulse{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.pulse span{font-size:11px;font-weight:600;background:var(--card);border-radius:99px;padding:5px 9px;box-shadow:var(--sh);color:var(--mu)}.pulse span:first-child{color:var(--ac)}.pulse .u{color:var(--z)}
+.cont{margin-top:12px;background:linear-gradient(155deg,var(--card),var(--acs));border-radius:22px;padding:14px;box-shadow:var(--sh);border:2px solid var(--ac)}.cont small{font-size:11px;font-weight:700;color:var(--ac)}.cont h3{margin:4px 0 6px;font-size:16px;line-height:1.3}.cont .two{grid-template-columns:1.5fr 1fr}.cont .btn{margin-top:10px;padding:11px}
+.tl{position:relative;padding-left:16px;font-size:12.5px;line-height:1.4}.tl:before{content:'';position:absolute;left:4px;top:4px;bottom:4px;width:2px;background:var(--line)}.tl div{position:relative;margin-bottom:5px}.tl div:before{content:'';position:absolute;left:-16px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--ac);border:2px solid var(--card);box-sizing:border-box}.tl div.f:before{background:var(--b)}.tl div.now:before{background:var(--l)}.tl div.now{font-weight:600}.tl em{font-style:normal;color:var(--mu)}
+.stuck{margin-top:10px;background:var(--ls);border-radius:14px;padding:10px 12px;font-size:13px;line-height:1.4}.stuck .lk{display:block;margin-top:4px}
+#nudge{position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 90px);max-width:520px;margin:0 auto;z-index:70;background:var(--tx);color:var(--bg);border-radius:18px;padding:14px;box-shadow:0 14px 40px rgba(0,0,0,.3);animation:up .35s var(--ease)}#nudge[hidden]{display:none}
+#nudge .ntx{font-size:14px;line-height:1.45}#nudge .ntx b{color:#B9AEFF}body.dark #nudge .ntx b{color:var(--ac)}#nudge .nbt{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}#nudge .nbt button{flex:1;min-width:90px;text-align:center;border-radius:12px;padding:10px;font-weight:600;font-size:13px;background:#8E7CF0;color:#fff}#nudge .nbt .g{background:rgba(127,127,127,.22);color:inherit}
 /* ===== Окно задачи ===== */
 .tmeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}.tmeta span{font-size:11px;font-weight:600;border-radius:8px;padding:3px 8px;background:var(--line);color:var(--mu)}.tmeta .ep{background:var(--ws);color:var(--w);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tmeta .y{background:var(--ls);color:var(--l)}.tmeta .r{background:var(--rs);color:var(--r)}
 #sheet h2.tt{font-size:19px;line-height:1.3;margin:8px 0 0}
@@ -161,7 +168,7 @@ body.dark #splash{background:radial-gradient(120% 70% at 50% 30%,#2A2645 0%,#141
 #splash .chips{justify-content:center;min-height:28px}#splash .chips span{font-size:12px;font-weight:600;background:var(--card);border-radius:99px;padding:6px 11px;box-shadow:var(--sh)}
 #splash .ld{width:120px;height:5px;border-radius:9px;background:rgba(108,92,231,.15);margin-top:22px;overflow:hidden}#splash .ld i{display:block;height:100%;width:40%;border-radius:9px;background:var(--ac);animation:spl 1.2s ease-in-out infinite}
 @keyframes spl{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
-.sme,.kbh{display:none}
+.sme,.kbh,.sday{display:none}
 /* ===== Компьютер (шире 1000px) ===== */
 @media (min-width:1000px){
  #view{max-width:none;margin:0 0 0 232px;padding:28px 36px 40px}
@@ -174,7 +181,15 @@ body.dark #splash{background:radial-gradient(120% 70% at 50% 30%,#2A2645 0%,#141
  .sme .xp{width:auto;margin:8px 6px 0;height:5px;background:var(--acs)}
  .kbh{display:block;order:6;margin:8px 0 0;font-size:11px;color:var(--mu);text-align:center;line-height:1.5}
  .hd{max-width:none}.say{margin-top:12px}
- .tcols{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:24px;margin-top:20px;align-items:start}
+ #view{padding-left:max(36px,calc((100vw - 232px - 1240px)/2));padding-right:max(36px,calc((100vw - 232px - 1240px)/2))}
+ #view:is([data-v=me],[data-v=idea],[data-v=meet],[data-v=close]){padding-left:max(36px,calc((100vw - 232px - 760px)/2));padding-right:max(36px,calc((100vw - 232px - 760px)/2))}
+ .pulse{display:none}
+ .tgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start;margin-top:18px}
+ .rail{grid-column:2;grid-row:1;position:sticky;top:20px}.rail>:first-child{margin-top:0}
+ .tcols{grid-column:1;grid-row:1;display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+ .sday{display:block;order:7;margin-top:auto;background:var(--bg);border-radius:16px;padding:12px;font-size:12px;color:var(--mu)}.sday b{display:block;font-size:20px;color:var(--tx);margin:2px 0}.sday .u{color:var(--z);font-weight:600}.sday .d{color:var(--l);font-weight:600}
+ .xpn{font-size:11px;color:var(--ac);font-weight:600;margin:6px 6px 0}
+ #nudge{left:auto;right:28px;bottom:28px;margin:0;width:400px}
  .tcols>div>:first-child,.tcols .plan{margin-top:0}.tcols>div>.btn{margin-top:10px}
  .gcols{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:16px;align-items:start}.gcols>div>.lbl{margin-top:0;font-size:13px}.gcols .goal:first-of-type{margin-top:0}
  .wsplit{display:grid;grid-template-columns:minmax(360px,1fr) 1.2fr;gap:28px;align-items:start}
@@ -191,10 +206,11 @@ body.dark #splash{background:radial-gradient(120% 70% at 50% 30%,#2A2645 0%,#141
 <script>(function(){var h=new Date().getHours(),P=h<6?['p_yawn','Поздно уже','Открываю…']:h<11?['p_wave','Доброе утро!','Собираю твой день…']:h<19?['p_laptop','Привет!','Подтягиваю задачи и встречи…']:['p_yawn','Вечер, Ерназар','Закроем день за 2 минуты?'];
 if(h>=19||h<6)document.body.classList.add('dark');document.getElementById('spI').src='char/'+P[0]+'.png';document.getElementById('spT').textContent=P[1];document.getElementById('spS').textContent=P[2]})()</script>
 <main id="view"></main>
-<nav id="nav" hidden><div class="sme" id="sme"></div><button data-act="nav" data-v="today"><i>☀︎</i>Сегодня</button><button data-act="nav" data-v="work"><i>▦</i>Работа</button><button class="plus" data-act="add" aria-label="Быстрая запись">+</button><button data-act="nav" data-v="goals"><i>◎</i>Цели</button><button data-act="nav" data-v="me"><i>☺</i>Я</button><p class="kbh">N — запись · F — фокус<br>1–4 — разделы</p></nav>
+<nav id="nav" hidden><div class="sme" id="sme"></div><button data-act="nav" data-v="today"><i>☀︎</i>Сегодня</button><button data-act="nav" data-v="work"><i>▦</i>Работа</button><button class="plus" data-act="add" aria-label="Быстрая запись">+</button><button data-act="nav" data-v="goals"><i>◎</i>Цели</button><button data-act="nav" data-v="me"><i>☺</i>Я</button><div class="sday" id="sday"></div><p class="kbh">N — запись · F — фокус<br>1–4 — разделы</p></nav>
 <div id="sheetWrap" hidden><div class="back2" data-act="close"></div><div id="sheet" role="dialog" aria-modal="true"></div></div>
 <div id="focus" hidden></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="nudge" role="dialog" hidden></div>
 <script src="core.js"></script>
 <script src="app.js"></script>
 <script src="actions.js"></script>

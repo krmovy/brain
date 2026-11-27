@@ -21,7 +21,10 @@ case 'nagTask':openSheet({type:'task',id:d.id});setTimeout(()=>{const x=$('#tUpd
 case 'meetSkip':{const m=(D.meetings||[]).find(x=>x.id===d.id);if(!m)return;m.status='skip';render();await guard(()=>upd('meetings',m.id,{status:'skip'}),'Ок, без резюме');break}
 case 'qFav':{const q=(D.quotes||[]).find(x=>x.id===d.id);if(!q)return;q.fav=!q.fav;render();await guard(()=>upd('quotes',q.id,{fav:q.fav}),q.fav?'♥ В любимых':'');break}
 case 'wkMove':{if(!S.conn)return toast('Подключи сервер рабочей таблицы в ⚙️');const sat=addDays(t,1),sun=addDays(t,2),mon=addDays(t,3),L=myOpen().filter(x=>x.dl===sat||x.dl===sun);if(!L.length)return;
-  await guard(async()=>{for(const x of L){const cells={J:toRu(mon),K:(+x.dl_moves||0)+1,M:`${short(t)}: DL ${toRu(x.dl)} → ${toRu(mon)}. Выходные`,Q:ru(new Date())};await setRow(C.SVC,'Задачи',{A:x.id},x.row_num,cells);Object.assign(x,{dl:mon,dl_moves:cells.K,week_upd:cells.M,updated:cells.Q})}},`Перенёс ${L.length} на понедельник ✓`);render();break}
+  await guard(async()=>{for(const x of L){const cells={J:toRu(mon),K:(+x.dl_moves||0)+1,M:`${short(t)}: DL ${toRu(x.dl)} → ${toRu(mon)}. Выходные`,Q:ru(new Date())};await setRow(C.SVC,'Задачи',{A:x.id},x.row_num,cells);Object.assign(x,{dl:mon,dl_moves:cells.K,week_upd:cells.M,updated:cells.Q});tlog(x.id,'dl','срок → '+cells.J+' · выходные')}},`Перенёс ${L.length} на понедельник ✓`);render();break}
+case 'nudgeX':$('#nudge').hidden=true;break;
+case 'planPush':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;const day=d.d==='0'?t:nxDay(t),dr=dayRec(day);dr.top3=dr.top3||[];if(dr.top3.some(y=>y.ref===x.id))return toast('Уже в плане');const main=dr.top3.filter(y=>!y.extra).length;
+  dr.top3.push({kind:'task',ref:x.id,t:x.id+' '+x.title,why:'шаг: '+String(x.next_step||'').slice(0,40),extra:main>=3&&day===t});await guard(()=>upsertDay(day,{top3:dr.top3,planned:dr.planned||day===t}),day===t?'Добавил в план на сегодня ✓':'Добавил в план на '+(nxLbl()==='пн'?'понедельник':'завтра')+' ✓');render();break}
 case 'qTog':LS.set('qMin',!LS.get('qMin',false));render();break;
 case 'nextOther':S.nxi=(S.nxi||0)+1;render();break;
 case 'nextTake':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;const dr=dayRec(t);dr.top3=dr.top3||[];dr.top3.push({kind:'task',ref:x.id,t:x.id+' '+x.title,why:'сверх плана',extra:true});S.nxi=0;await guard(()=>upsertDay(t,{top3:dr.top3}));focusStart(x.id+' '+x.title,x.id);render();break}
@@ -38,12 +41,13 @@ case 'topOpen':{const x=dayRec(t).top3[+d.i];if(x.kind==='task')openSheet({type:
 case 'taskOpen':openSheet({type:'task',id:d.id});break;
 case 'tSt':{const u=val('tUpd'),n=$('#tNext')&&$('#tNext').value;S.sheet.st=d.v;renderSheet();if(u)$('#tUpd').value=u;if(n!=null&&$('#tNext'))$('#tNext').value=n;break}
 case 'tMore':{const u=val('tUpd');S.sheet.more=true;renderSheet();if(u)$('#tUpd').value=u;break}
-case 'taskDone':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x||!openT(x))return;if(!S.conn)return toast('Подключи сервер рабочей таблицы в ⚙️');x.status='Готово';x.updated=ru(new Date());celebrate();render();await guard(()=>setRow(C.SVC,'Задачи',{A:x.id},x.row_num,{H:'Готово',Q:ru(new Date())}),`${x.id} закрыта ✓ +25 XP`);levelCheck();break}
+case 'taskDone':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x||!openT(x))return;if(!S.conn)return toast('Подключи сервер рабочей таблицы в ⚙️');x.status='Готово';x.updated=ru(new Date());celebrate();render();await guard(async()=>{await setRow(C.SVC,'Задачи',{A:x.id},x.row_num,{H:'Готово',Q:ru(new Date())});tlog(x.id,'done','закрыл ✓');setTimeout(()=>chainAfterDone(x),900)});levelCheck();break}
 case 'tSave':{const x=(D.tasks||[]).find(y=>y.id===S.sheet.id);if(!S.conn)return toast('Подключи сервер рабочей таблицы в ⚙️');const cells={},st=S.sheet.st,own=val('tOwner'),dl=val('tDl'),why=val('tWhy'),up=val('tUpd'),nx=val('tNext');
   if(st&&st!==x.status)cells.H=st;if(own!==String(x.owner||''))cells.F=own;if(up)cells.M=`${short(t)} — ${up}`;if(nx!==String(x.next_step||''))cells.N=nx;
   if(dl&&dl!==x.dl){if(!why)return toast('Укажи причину переноса');cells.J=toRu(dl);cells.K=(+x.dl_moves||0)+1;cells.M=`${short(t)}: DL ${x.dl?toRu(x.dl):'—'} → ${toRu(dl)}. ${why}`+(up?'\n'+up:'')}
   if(!Object.keys(cells).length)return closeSheet();cells.Q=ru(new Date());
-  await guard(async()=>{await setRow(C.SVC,'Задачи',{A:x.id},x.row_num,cells);Object.assign(x,{status:cells.H||x.status,owner:cells.F!=null?cells.F:x.owner,week_upd:cells.M||x.week_upd,next_step:cells.N!=null?cells.N:x.next_step,dl:dl||x.dl,dl_moves:cells.K||x.dl_moves,updated:cells.Q});closeSheet();if(cells.H==='Готово')celebrate();render()},cells.H==='Готово'?`${x.id} закрыта ✓ +25 XP`:'Апдейт сохранён ✓');break}
+  await guard(async()=>{await setRow(C.SVC,'Задачи',{A:x.id},x.row_num,cells);Object.assign(x,{status:cells.H||x.status,owner:cells.F!=null?cells.F:x.owner,week_upd:cells.M||x.week_upd,next_step:cells.N!=null?cells.N:x.next_step,dl:dl||x.dl,dl_moves:cells.K||x.dl_moves,updated:cells.Q});closeSheet();if(up)tlog(x.id,'update',up);if(cells.H)tlog(x.id,cells.H==='Готово'?'done':'status',cells.H==='Готово'?'закрыл ✓':'статус → '+cells.H);if(cells.J)tlog(x.id,'dl','срок → '+cells.J+(why?' · '+why:''));if(cells.N!=null&&nx)tlog(x.id,'step','шаг: '+nx);
+    if(cells.H==='Готово'){celebrate();render();setTimeout(()=>chainAfterDone(x),900)}else{render();if(nx&&openT(x))nudge(`Сохранено ✓ <b>Следующий шаг: «${esc(nx.slice(0,70))}» — когда?</b>`,[['Сегодня',`data-act="planPush" data-id="${esc(x.id)}" data-d="0"`],[nxLbl()==='пн'?'В понедельник':'Завтра',`data-act="planPush" data-id="${esc(x.id)}" data-d="1"`]]);else toast('Апдейт сохранён ✓')}});break}
 case 'ping':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;copy(`Привет, ${fname(x.owner)}! Как продвигается ${x.id} «${x.title}»?${x.dl?(x.dl<t?' DL был '+toRu(x.dl)+'.':' DL '+toRu(x.dl)+'.'):''} Если что-то блокирует — скажи, помогу разрулить.`);toast('Сообщение скопировано — вставь в чат');break}
 /* обещания */
 case 'promOpen':openSheet({type:'prom',id:d.id});break;
@@ -132,7 +136,7 @@ async function saveIdea(i,force){if(!i)return;const cols={},tt=val('iTitle'),hk=
 function copy(t){try{navigator.clipboard.writeText(t).then(()=>toast('Скопировано'),()=>toast('Не удалось скопировать'))}catch(e){toast('Не удалось скопировать')}}
 
 /* события */
-document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;if(a.tagName==='A'&&!a.getAttribute('href'))e.preventDefault();e.stopPropagation();act(a.dataset.act,a)});
+document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;if(a.closest('#nudge'))$('#nudge').hidden=true;if(a.tagName==='A'&&!a.getAttribute('href'))e.preventDefault();e.stopPropagation();act(a.dataset.act,a)});
 document.addEventListener('focusout',e=>{if(['iScript','iHook','iTitle'].includes(e.target.id)&&S.view==='idea'){const i=(D.ideas||[]).find(x=>x.id===S.iid);saveIdea(i).catch(()=>{})}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet()}
   const tp=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable;
@@ -148,7 +152,8 @@ const T0=Date.now();function splashOff(ms){const el=$('#splash');if(!el||el.clas
   S.focus=LS.get('focus',null);render();renderFocus();
   if(!S.auth||S.needPass)splashOff(0);else{try{if(D.tasks){const H=hero();$('#spC').innerHTML=`<span>🔥 ${streak()} ${plural(streak(),'день','дня','дней')}</span><span>Ур. ${H.lvl}</span>`}}catch(e){}
     setTimeout(()=>splashOff(),D.tasks?1500:8000);loadAll().finally(()=>splashOff())}
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.auth&&Date.now()-(S.syncedAt||0)>60000)loadAll()});
+  const seen0=LS.get('seen',0);LS.set('seen',Date.now());if(S.auth)setTimeout(()=>welcomeBack(seen0),2600);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){LS.set('seen',Date.now());return}const last=LS.get('seen',0);LS.set('seen',Date.now());if(S.auth&&Date.now()-(S.syncedAt||0)>60000)loadAll().then(()=>welcomeBack(last));else welcomeBack(last)});
   setInterval(()=>{const dk=night();if(dk!==document.body.classList.contains('dark'))render()},60000);
   matchMedia('(min-width:1000px)').addEventListener('change',()=>render());
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
