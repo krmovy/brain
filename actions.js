@@ -34,13 +34,14 @@ case 'topDone':{const dr=dayRec(t),x=dr.top3[+d.i];if(x.kind==='task')return act
 case 'topOpen':{const x=dayRec(t).top3[+d.i];if(x.kind==='task')openSheet({type:'task',id:x.ref});else if(x.kind==='idea'){S.iid=x.ref;await loadHooks().catch(()=>{});go('idea')}else if(x.kind==='prom')openSheet({type:'prom',id:x.ref});else focusStart(x.t,x.ref);break}
 /* задачи (рабочая таблица) */
 case 'taskOpen':openSheet({type:'task',id:d.id});break;
-case 'tSt':S.sheet.st=d.v;renderSheet();break;
+case 'tSt':{const u=val('tUpd'),n=$('#tNext')&&$('#tNext').value;S.sheet.st=d.v;renderSheet();if(u)$('#tUpd').value=u;if(n!=null&&$('#tNext'))$('#tNext').value=n;break}
+case 'tMore':{const u=val('tUpd');S.sheet.more=true;renderSheet();if(u)$('#tUpd').value=u;break}
 case 'taskDone':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x||!openT(x))return;if(!S.conn)return toast('Подключи сервер рабочей таблицы в ⚙️');x.status='Готово';x.updated=ru(new Date());celebrate();render();await guard(()=>setRow(C.SVC,'Задачи',{A:x.id},x.row_num,{H:'Готово',Q:ru(new Date())}),`${x.id} закрыта ✓ +25 XP`);levelCheck();break}
 case 'tSave':{const x=(D.tasks||[]).find(y=>y.id===S.sheet.id);if(!S.conn)return toast('Подключи сервер рабочей таблицы в ⚙️');const cells={},st=S.sheet.st,own=val('tOwner'),dl=val('tDl'),why=val('tWhy'),up=val('tUpd'),nx=val('tNext');
-  if(st&&st!==x.status)cells.H=st;if(own!==String(x.owner||''))cells.F=own;if(up!==String(x.week_upd||''))cells.M=up;if(nx!==String(x.next_step||''))cells.N=nx;
+  if(st&&st!==x.status)cells.H=st;if(own!==String(x.owner||''))cells.F=own;if(up)cells.M=`${short(t)} — ${up}`;if(nx!==String(x.next_step||''))cells.N=nx;
   if(dl&&dl!==x.dl){if(!why)return toast('Укажи причину переноса');cells.J=toRu(dl);cells.K=(+x.dl_moves||0)+1;cells.M=`${short(t)}: DL ${x.dl?toRu(x.dl):'—'} → ${toRu(dl)}. ${why}`+(up?'\n'+up:'')}
   if(!Object.keys(cells).length)return closeSheet();cells.Q=ru(new Date());
-  await guard(async()=>{await setRow(C.SVC,'Задачи',{A:x.id},x.row_num,cells);Object.assign(x,{status:cells.H||x.status,owner:cells.F!=null?cells.F:x.owner,week_upd:cells.M||x.week_upd,next_step:cells.N!=null?cells.N:x.next_step,dl:dl||x.dl,dl_moves:cells.K||x.dl_moves,updated:cells.Q});closeSheet();render()},'Сохранено в таблицу ✓');break}
+  await guard(async()=>{await setRow(C.SVC,'Задачи',{A:x.id},x.row_num,cells);Object.assign(x,{status:cells.H||x.status,owner:cells.F!=null?cells.F:x.owner,week_upd:cells.M||x.week_upd,next_step:cells.N!=null?cells.N:x.next_step,dl:dl||x.dl,dl_moves:cells.K||x.dl_moves,updated:cells.Q});closeSheet();if(cells.H==='Готово')celebrate();render()},cells.H==='Готово'?`${x.id} закрыта ✓ +25 XP`:'Апдейт сохранён ✓');break}
 case 'ping':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;copy(`Привет, ${fname(x.owner)}! Как продвигается ${x.id} «${x.title}»?${x.dl?(x.dl<t?' DL был '+toRu(x.dl)+'.':' DL '+toRu(x.dl)+'.'):''} Если что-то блокирует — скажи, помогу разрулить.`);toast('Сообщение скопировано — вставь в чат');break}
 /* обещания */
 case 'promOpen':openSheet({type:'prom',id:d.id});break;
