@@ -14,6 +14,15 @@ case 'close':closeSheet();break;
 case 'refresh':toast('Обновляю…');closeSheet();loadAll();break;
 case 'settings':openSheet({type:'settings'});break;
 case 'goals':S.goals=d.v;render();break;
+case 'goTo':S.goals=d.v;go('goals');break;
+case 'nagLater':LS.set('nagSnooze',Date.now()+36e5);toast('Ок, напомню через час');render();break;
+case 'nagMeet':S.mid=d.id;S.mtab='after';go('meet');break;
+case 'nagTask':openSheet({type:'task',id:d.id});setTimeout(()=>{const x=$('#tUpd');if(x){x.focus();x.scrollIntoView({block:'center'})}},120);break;
+case 'meetSkip':{const m=(D.meetings||[]).find(x=>x.id===d.id);if(!m)return;m.status='skip';render();await guard(()=>upd('meetings',m.id,{status:'skip'}),'Ок, без резюме');break}
+case 'qFav':{const q=(D.quotes||[]).find(x=>x.id===d.id);if(!q)return;q.fav=!q.fav;render();await guard(()=>upd('quotes',q.id,{fav:q.fav}),q.fav?'♥ В любимых':'');break}
+case 'qTog':LS.set('qMin',!LS.get('qMin',false));render();break;
+case 'nextOther':S.nxi=(S.nxi||0)+1;render();break;
+case 'nextTake':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;const dr=dayRec(t);dr.top3=dr.top3||[];dr.top3.push({kind:'task',ref:x.id,t:x.id+' '+x.title,why:'сверх плана',extra:true});S.nxi=0;await guard(()=>upsertDay(t,{top3:dr.top3}));focusStart(x.id+' '+x.title,x.id);render();break}
 case 'blogTab':S.blogTab=d.v;render();break;
 case 'mtab':S.mtab=d.v;render();break;
 case 'quest':{const q=quests()[+d.i];if(q.act==='meet'){S.mid=q.id;S.mtab='before';go('meet')}else if(q.act==='idea'&&q.id){S.iid=q.id;await loadHooks().catch(()=>{});go('idea')}else if(q.act==='goals'){S.goals=q.v;go('goals')}else go(q.v||'work');break}

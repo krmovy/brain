@@ -26,7 +26,7 @@ async function loadAll(){
     ['metrics','metrics?select=*&order=day'],['clients','clients?select=*'],['hyp','hypotheses?select=*'],['quests','quests?select=*'],
     ['habits','habits?select=*&order=day.desc&limit=60'],['hdefs','habit_defs?select=*&active=eq.true&order=sort'],['hmarks',`habit_marks?select=*&day=gte.${d14}`],
     ['money',`money?select=*`],['days',`days?select=*&day=gte.${d60}&order=day`],['focus',`focus_log?select=*&day=gte.${d60}`],
-    ['queue','queue?select=*&order=created_at.desc&limit=30'],['shop','shop?select=*'],['ach','achievements?select=*'],['journal',`journal?select=*&day=gte.${d60}`]];
+    ['queue','queue?select=*&order=created_at.desc&limit=30'],['quotes','quotes?select=*&order=day.desc.nullslast&limit=40'],['shop','shop?select=*'],['ach','achievements?select=*'],['journal',`journal?select=*&day=gte.${d60}`]];
   S.syncing=true;
   try{await token()}catch(e){S.syncing=false;render();return}
   const R=await Promise.allSettled(J.map(j=>sb('GET',j[1])));let bad=null;
@@ -68,12 +68,14 @@ function xpByDay(){const m={},a=(d,v)=>{if(d)m[d]=(m[d]||0)+v};
   (D.promises||[]).filter(p=>p.status==='Сделано').forEach(p=>a(dayOf(p.updated_at),10));
   (D.days||[]).filter(d=>d.closed).forEach(d=>a(d.day,30));(D.focus||[]).forEach(f=>a(f.day,Math.round(f.minutes/25*10)));
   (D.hmarks||[]).forEach(h=>a(h.day,5));(D.ideas||[]).filter(i=>ist(i)==='Вышел').forEach(i=>a(dayOf(i.updated_at),20));
-  (D.meetings||[]).filter(x=>x.summary).forEach(x=>a(x.day,15));return m}
+  (D.meetings||[]).filter(x=>x.summary).forEach(x=>a(x.day,15));
+  (D.days||[]).forEach(d=>(d.top3||[]).filter(x=>x.extra&&top3Done(x)).forEach(()=>a(d.day,25)));return m}
 function hero(){const m=xpByDay(),xp=Object.values(m).reduce((a,b)=>a+b,0),lvl=Math.floor(xp/250)+1,spent=(D.shop||[]).filter(s=>s.bought).reduce((a,s)=>a+(+s.price||0),0);return {xp,lvl,name:LVN[Math.min(lvl-1,9)],next:LVN[Math.min(lvl,9)],in:xp%250,coins:xp-spent,m}}
 function streak(){const m=xpByDay(),dd=dayRec;let n=0,d=today();if(!(m[d]>0)&&!dd(d).closed)d=addDays(d,-1);while((m[d]>0)||dd(d).closed||dd(d).freeze_used){n++;d=addDays(d,-1);if(n>400)break}return n}
 function weekStats(off){const t=today(),wd=(new Date().getDay()+6)%7,mon=addDays(t,-wd-7*off),m=xpByDay();let xp=0,closed=0,focus=0,vids=0;
   for(let i=0;i<7;i++){const d=addDays(mon,i);if(off===0&&d>t)break;xp+=m[d]||0;if(dayRec(d).closed)closed++;focus+=(D.focus||[]).filter(f=>f.day===d).reduce((a,f)=>a+f.minutes,0);vids+=(D.ideas||[]).filter(x=>ist(x)==='Вышел'&&dayOf(x.updated_at)===d).length}return {xp,closed,focus,vids}}
 function mood(){const h=new Date().getHours(),q=quests();if(S.win&&Date.now()-S.win<6000)return ['f_laugh',['Красава! 🔥','Так держать!','Вот это темп 💪'][S.win%3]];
+  const ng=nags().length;if(ng)return ['f_focus',`Сначала запиши итоги — ${ng} ${plural(ng,'пункт','пункта','пунктов')} ниже ✍️`];
   if(q.every(x=>x.done))return ['f_grin','Все задания закрыты — сундук твой 🎁'];if(h>=22||h<6)return ['f_sleepy','Поздно. Закрой день и спать 🌙'];
   if(h<11&&!dayRec(today()).planned)return ['f_happy','Доброе утро! Спланируем день?'];const od=feed().filter(x=>x.od).length;if(od>=2)return ['f_focus',`${od} просрочено. Начнём с одной?`];
   if(streak()>=7)return ['f_cool',`Серия ${streak()} дней. Не сбавляем 😎`];return ['f_neutral',h<18?'Держим фокус на одном деле':'Вечер — время для блога']}
@@ -86,12 +88,46 @@ const lbl=(a,b,act)=>`<div class="lbl"><span>${a}</span>${b?`<span class="lk" ${
 const back=(v,t)=>`<button class="back" data-act="go" data-v="${v}">‹ ${t}</button>`;
 const seg=(items,cur,act)=>`<div class="seg">${items.map(i=>`<button class="${i[0]===cur?'on':''}" data-act="${act}" data-v="${i[0]}">${i[1]}</button>`).join('')}</div>`;
 
+/* ---------- СЕГОДНЯ: напоминания, цитата, «дальше», сверх плана ---------- */
+function nags(){if(LS.get('nagSnooze',0)>Date.now())return [];const now=new Date(),t=today(),out=[];
+  (D.meetings||[]).filter(m=>m.status!=='skip'&&!m.summary&&m.end_at&&new Date(m.end_at)<now&&now-new Date(m.end_at)<3*864e5).sort((a,b)=>a.end_at<b.end_at?1:-1).forEach(m=>{const mn=Math.round((now-new Date(m.end_at))/6e4);out.push({k:'meet',id:m.id,t:'Резюме: '+m.title,s:'прошла '+(mn<60?mn+' мин':mn<1440?Math.round(mn/60)+' ч':Math.round(mn/1440)+' дн')+' назад · +15 XP'})});
+  myOpen().filter(x=>['В работе','Блокер'].includes(x.status)).map(x=>{const u=fromRu(x.updated);return [x,u?Math.round((new Date(t)-new Date(u))/864e5):99]}).filter(a=>a[1]>=3).sort((a,b)=>b[1]-a[1]).forEach(([x,n])=>out.push({k:'task',id:x.id,t:x.id+': что сделал?',s:(n>=99?'апдейта не было':'нет апдейта '+n+' '+plural(n,'день','дня','дней'))+' · '+String(x.title||'').slice(0,40)}));
+  return out}
+function vNags(){const n=nags();if(!n.length)return '';return `<section class="nag"><div class="nh"><b>✍️ Нужно записать · ${n.length}</b><button class="lk" data-act="nagLater">позже</button></div>${n.slice(0,4).map(x=>`<button class="ni" data-act="${x.k==='meet'?'nagMeet':'nagTask'}" data-id="${esc(x.id)}"><span class="t">${esc(x.t)}<small>${esc(x.s)}</small></span>${x.k==='meet'?`<span class="x" data-act="meetSkip" data-id="${esc(x.id)}">не нужно</span>`:''}<i>›</i></button>`).join('')}${n.length>4?`<p class="sub" style="margin:6px 2px 0">и ещё ${n.length-4}</p>`:''}</section>`}
+function quoteCard(){const q=(D.quotes||[]).find(x=>x.day===today())||(D.quotes||[])[0];if(!q)return '';
+  if(LS.get('qMin',false))return `<button class="qmin" data-act="qTog"><i>“</i><span>${esc(q.text)}</span>›</button>`;
+  return `<section class="qt"><q>${esc(q.text)}</q><div class="a">${esc(q.author||'')}</div>${q.why?`<div class="why"><b>Почему тебе:</b> ${esc(q.why)}</div>`:''}<div class="act"><button data-act="qFav" data-id="${q.id}">${q.fav?'♥ В любимых':'♡ В любимые'}</button><button data-act="nav" data-v="me">Все цитаты →</button><button data-act="qTog">свернуть</button></div></section>`}
+function vQuotes(){const Q=(D.quotes||[]).slice().sort((a,b)=>(b.fav-a.fav)||((b.day||'')>(a.day||'')?1:-1));if(!Q.length)return '';
+  return lbl('Цитаты',`♥ ${Q.filter(q=>q.fav).length}`)+Q.slice(0,12).map(q=>`<div class="qt sm"><q>${esc(q.text)}</q><div class="a">${esc(q.author||'')}${q.day?' · '+short(q.day):''}</div><div class="act"><button data-act="qFav" data-id="${q.id}">${q.fav?'♥ в любимых':'♡'}</button></div></div>`).join('')}
+function vTop3(dr){const L=(dr.top3||[]).map((x,i)=>[x,i]).filter(a=>!a[0].extra);if(!L.length)return '';const dn=L.filter(a=>top3Done(a[0])).length,fu=L.findIndex(a=>!top3Done(a[0]));
+  let o=lbl('3 главных',`${dn}/${L.length}`);
+  L.forEach(([x,i],k)=>{const d=top3Done(x);if(k===fu&&k>0)o+=`<div class="nx"><b>→</b><span>Дальше: <b>${esc(x.t)}</b>${x.why?' · '+esc(x.why):''}</span><button class="lk" data-act="focus" data-t="${esc(x.t)}" data-ref="${esc(x.ref||'')}">Фокус 25′</button></div>`;
+    o+=blk(d?'z':'ac',['①','②','③','④'][k]||'•',esc(x.t),esc(x.why||''),`<button class="ck ${d?'on':''}" data-act="topDone" data-i="${i}">${d?'✓':''}</button>`,`data-act="topOpen" data-i="${i}"`).replace('class="bl"',`class="bl ${d?'done':''}"`)});
+  return dn===L.length?o+vMore(dr):o}
+function bestNext(dr){const t=today(),inTop=new Set((dr.top3||[]).map(x=>x.ref)),p1=new Set((D.epics||[]).filter(e=>e.priority==='P1'&&e.status!=='Закрыт').map(e=>e.id)),t2=addDays(t,2);
+  return myOpen().filter(x=>!inTop.has(x.id)).map(x=>{let s=0;const why=[];if(x.dl&&x.dl<t){s+=50;why.push(['r','просрочено'])}else if(x.dl&&x.dl<=t2){s+=30;why.push(['r','DL '+short(x.dl)])}
+    if(p1.has(x.epic_id)){s+=20;why.push(['y','P1 эпик'])}if(x.status==='В работе'){s+=10;why.push(['g','уже в работе'])}if(x.dl&&x.dl>t2){s+=5;why.push(['g','DL '+short(x.dl)])}return {x,s,why}}).sort((a,b)=>b.s-a.s)}
+function vMore(dr){const ex=(dr.top3||[]).map((x,i)=>[x,i]).filter(a=>a[0].extra),exd=ex.filter(a=>top3Done(a[0])).length;
+  let o=`<section class="win"><small>${exd?`3/3 ✓ + ${exd} СВЕРХ ПЛАНА`:'3/3 ✓ ПЛАН ДНЯ ЗАКРЫТ'}</small><h3>${exd?'Машина. Ещё?':'Красава. Ещё одну?'}</h3><p>Каждая задача сверх плана — ×2 XP до конца дня.</p><img src="char/p_yay.png" alt=""></section>`;
+  o+=lbl('Сверх плана','×2 XP');
+  o+=ex.map(([x,i])=>{const d=top3Done(x);return blk(d?'z':'ac','＋',esc(x.t),d?'+50 XP ✓':'сверх плана',`<button class="ck ${d?'on':''}" data-act="topDone" data-i="${i}">${d?'✓':''}</button>`,`data-act="topOpen" data-i="${i}"`).replace('class="bl"',`class="bl ${d?'done':''}"`)}).join('');
+  const B=bestNext(dr);if(B.length){const b=B[(S.nxi||0)%B.length];o+=`<div class="ext"><div class="top"><span>ЛУЧШАЯ СЛЕДУЮЩАЯ</span><span>+50 XP</span></div><b>${esc(b.x.id+' '+b.x.title)}</b><p>${esc(b.x.epic_id||'вне эпика')}${b.x.next_step?' · '+esc(b.x.next_step):''}</p>${b.why.length?`<div class="why">${b.why.map(w=>`<span class="${w[0]}">${esc(w[1])}</span>`).join('')}</div>`:''}<div class="two"><button class="btn" data-act="nextTake" data-id="${esc(b.x.id)}">Взять · фокус 25′</button><button class="btn g" data-act="nextOther">Другую${B.length>1?` (${B.length})`:''}</button></div></div>`}
+  else o+='<p class="empty">Рабочие задачи разобраны 👌 Возьми шаг блога ниже</p>';
+  return o+vPrep()+vDig()}
+function vPrep(){const now=new Date(),tm=addDays(today(),1),ms=todayMeetings().filter(m=>new Date(m.start_at)>now&&!m.prep).slice(0,1),dl=myOpen().filter(x=>x.dl===tm);if(!ms.length&&!dl.length)return '';
+  return lbl('К чему готовиться')+`<div class="mt">${ms.map(m=>`<button class="m" data-act="meet" data-id="${m.id}"><span class="tm">${hm(m.start_at)}</span><span class="t">${esc(m.title)}<small>подготовки нет</small></span><span class="tag">✨ Подготовить</span></button>`).join('')}${dl.length?`<button class="m" data-act="go" data-v="work"><span class="tm">Завтра</span><span class="t">${dl.length} ${plural(dl.length,'дедлайн','дедлайна','дедлайнов')}: ${esc(dl.map(x=>x.id).join(', '))}<small>${esc(dl.filter(x=>x.status!=='В работе').map(x=>x.id+' — '+x.status).join(' · ')||'всё в работе')}</small></span><span class="tag r">Посмотреть</span></button>`:''}</div>`}
+function vDig(){const t=today(),out=[],mine=new Set(myOpen().map(x=>x.epic_id).filter(Boolean));
+  (D.epics||[]).filter(e=>mine.has(e.id)&&e.status!=='Закрыт').map(e=>[e,epicStat(e).idle]).filter(a=>a[1]>=7).sort((a,b)=>b[1]-a[1]).slice(0,1).forEach(([e,n])=>out.push(['w','💼',`${e.id} стоит ${n} дн`,'Один шаг: апдейт в таблицу, 5 мин',`data-act="epic" data-id="${e.id}"`,'Сделать']));
+  const id=(D.ideas||[]).find(i=>['Пишу','Готов','Снимаю','Сценарий','Идея','Сырая'].includes(i.status));if(id)out.push(['b','🎬',String(id.title||'Идея').slice(0,34),{Идея:'Напиши хук, 10 мин',Сырая:'Напиши хук, 10 мин',Пишу:'Допиши сценарий, 15 мин',Сценарий:'Сними, 15 мин',Готов:'Сними, 15 мин',Снимаю:'Доснимай'}[id.status]||'Один шаг',`data-act="idea" data-id="${id.id}"`,'Открыть']);
+  if(!(D.hmarks||[]).some(m=>m.day===t))out.push(['z','🌿','Привычки за сегодня','Ни одной отметки — серия под угрозой','data-act="goTo" data-v="life"','Отметить']);
+  if(!out.length)return '';return lbl('Куда копнуть')+`<div class="dig">${out.slice(0,2).map(d=>`<button class="dg" style="--s:var(--${d[0]}s)" ${d[4]}><i>${d[1]}</i><b>${esc(d[2])}</b><small>${esc(d[3])}</small><em>${d[5]} →</em></button>`).join('')}</div>`}
+
 /* ---------- СЕГОДНЯ ---------- */
 function vToday(){const t=today(),h=new Date().getHours(),dr=dayRec(t),H=hero(),md=mood(),q=quests(),qd=q.filter(x=>x.done).length;
-  let o=`<div class="hd">${av(md[0])}<div class="t"><b>${h<11?'Доброе утро!':h<18?'Сегодня':'Вечер'}</b><small>${WD[new Date().getDay()]}, ${new Date().getDate()} ${MON[new Date().getMonth()]} · Ур. ${H.lvl} ${H.name}</small></div><button class="chip" data-act="go" data-v="me">🔥 ${streak()}</button></div><div class="say">${esc(md[1])}</div><div class="tcols"><div>`;
+  let o=`<div class="hd">${av(md[0])}<div class="t"><b>${h<11?'Доброе утро!':h<18?'Сегодня':'Вечер'}</b><small>${WD[new Date().getDay()]}, ${new Date().getDate()} ${MON[new Date().getMonth()]} · Ур. ${H.lvl} ${H.name}</small></div><button class="chip" data-act="go" data-v="me">🔥 ${streak()}</button></div><div class="say">${esc(md[1])}</div>`+vNags()+quoteCard()+`<div class="tcols"><div>`;
   if(!dr.planned&&!dr.closed&&h<14){const sg=suggestTop3();S.plan=S.plan||sg;
     o+=`<section class="plan"><h3>Спланируем день?</h3><p>Я подобрал 3 главных. Убери лишнее или выбери другое.</p>${S.plan.map((x,i)=>`<div class="pick"><span class="t">${esc(x.t)}</span><em>${esc(x.why||'')}</em><button class="x" data-act="planDel" data-i="${i}">✕</button></div>`).join('')}${S.plan.length<3?`<button class="pick add" data-act="planAdd">＋ добавить</button>`:''}<img src="char/p_wave.png" alt=""></section><button class="btn" data-act="planGo">Погнали →</button>`}
-  else if((dr.top3||[]).length){o+=lbl('3 главных',`${dr.top3.filter(top3Done).length}/${dr.top3.length}`);o+=dr.top3.map((x,i)=>{const dn=top3Done(x);return blk(dn?'z':'ac',['①','②','③'][i],esc(x.t),esc(x.why||''),`<button class="ck ${dn?'on':''}" data-act="topDone" data-i="${i}">${dn?'✓':''}</button>`,`data-act="topOpen" data-i="${i}"`).replace('class="bl"',`class="bl ${dn?'done':''}"`)}).join('')}
+  else if((dr.top3||[]).length){o+=vTop3(dr)}
   o+=lbl('Задания дня',`🎁 ${qd}/3`);o+=`<div class="q3">${q.map((x,i)=>`<button class="q ${x.done?'ok':''}" data-act="quest" data-i="${i}"><b>${x.t}</b>${esc(x.s)}</button>`).join('')}</div><div class="chest"><div class="bar"><i style="width:${qd/3*100}%"></i></div></div>`;
   o+='</div><div>';const ms=todayMeetings(),now=new Date();
   if(ms.length){const mins=ms.reduce((a,m)=>a+((new Date(m.end_at)-new Date(m.start_at))/6e4||0),0),nx=ms.find(m=>new Date(m.end_at)>now);
@@ -221,7 +257,7 @@ function renderSheet(){const s=S.sheet;if(!s)return;let h='<div class="grab"></d
   $('#sheet').innerHTML=h}
 
 /* ---------- рендер ---------- */
-const VIEWS={today:vToday,close:vClose,meet:vMeet,work:vWork,epic:()=>desk()?vWork():vEpic(),goals:vGoals,idea:vIdea,me:vMe};
+const VIEWS={today:vToday,close:vClose,meet:vMeet,work:vWork,epic:()=>desk()?vWork():vEpic(),goals:vGoals,idea:vIdea,me:()=>vMe()+vQuotes()};
 const TAB={today:'today',close:'today',meet:'today',work:'work',epic:'work',goals:'goals',idea:'goals',me:'me'};
 function render(){document.body.classList.toggle('dark',night());
   if(!S.auth||S.needPass){$('#view').innerHTML=vLogin();$('#nav').hidden=true;return}$('#nav').hidden=false;
