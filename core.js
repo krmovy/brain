@@ -80,3 +80,4 @@ async function toAgent(agent,title,prompt,ref_table,ref_id){
   const [r]=await sb('POST','queue',{agent,title:String(title||'').slice(0,120),prompt,ref_table:ref_table||null,ref_id:ref_id||null},'return=representation');
   (S.queue=S.queue||[]).unshift(r);return r;
 }
+const desk=()=>matchMedia('(min-width:1000px)').matches;

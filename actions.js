@@ -50,7 +50,7 @@ case 'fstop':S.focus=null;LS.set('focus',null);renderFocus();break;
 case 'fdone':{const f=S.focus,min=Math.max(1,Math.round(((f.paused||Date.now())-f.start)/60000));S.focus=null;LS.set('focus',null);renderFocus();celebrate();
   await guard(()=>ins('focus_log',{day:t,minutes:min,title:f.title,ref_id:f.ref||null}),`Фокус ${min} мин записан ✓`);(D.focus=D.focus||[]);render();break}
 /* работа */
-case 'epic':S.eid=d.id;go('epic');break;
+case 'epic':S.eid=d.id;if(desk()){S.view='work';history.replaceState(null,'','#work');render()}else go('epic');break;
 case 'epicPri':{const e=(D.epics||[]).find(x=>x.id===S.eid);e.priority={P1:'P2',P2:'P3',P3:'P1'}[e.priority||'P2'];render();await guard(()=>upd('epics',e.id,{priority:e.priority}),'Важность: '+e.priority);break}
 case 'epicGoal':{const e=(D.epics||[]).find(x=>x.id===S.eid),g=prompt('Зачем этот эпик? Одна фраза — какой результат',e.goal||'');if(g===null)return;e.goal=g.trim();render();await guard(()=>upd('epics',e.id,{goal:e.goal}),'Цель сохранена');break}
 /* агенты */
@@ -122,17 +122,22 @@ function copy(t){try{navigator.clipboard.writeText(t).then(()=>toast('Скопи
 /* события */
 document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;if(a.tagName==='A'&&!a.getAttribute('href'))e.preventDefault();e.stopPropagation();act(a.dataset.act,a)});
 document.addEventListener('focusout',e=>{if(['iScript','iHook','iTitle'].includes(e.target.id)&&S.view==='idea'){const i=(D.ideas||[]).find(x=>x.id===S.iid);saveIdea(i).catch(()=>{})}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet()}if(e.key==='Enter'&&e.target.id==='tmNew'){act('closeDay',e.target)}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet()}
+  const tp=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable;
+  if(!tp&&S.auth&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!S.sheet){const k=e.key.toLowerCase(),nv={'1':'today','2':'work','3':'goals','4':'me'}[k];if(nv){go(nv);return}if(k==='n'||k==='т'){e.preventDefault();act('add',e.target);return}if((k==='f'||k==='а')&&!S.focus){act('focus',{dataset:{}});return}}if(e.key==='Enter'&&e.target.id==='tmNew'){act('closeDay',e.target)}});
 
 /* старт */
+const T0=Date.now();function splashOff(ms){const el=$('#splash');if(!el||el.classList.contains('out'))return;setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),400)},ms===0?0:Math.max(0,700-(Date.now()-T0)))}
 (function init(){
   S.conn=LS.get('conn',null);S.auth=LS.get('auth',null);
   if(/access_token/.test(location.hash)){const p=new URLSearchParams(location.hash.slice(1));saveSess({access_token:p.get('access_token'),refresh_token:p.get('refresh_token'),expires_in:p.get('expires_in')});S.needPass=true;history.replaceState(null,'',location.pathname)}
   const h=(location.hash||'').slice(1);if(VIEWS[h]&&!['epic','idea','meet'].includes(h))S.view=h;
   const c=LS.get('cache3',null);if(c&&c.D){Object.assign(D,c.D);S.syncedAt=c.at}
   S.focus=LS.get('focus',null);render();renderFocus();
-  if(S.auth)loadAll();
+  if(!S.auth||S.needPass)splashOff(0);else{try{if(D.tasks){const H=hero();$('#spC').innerHTML=`<span>🔥 ${streak()} ${plural(streak(),'день','дня','дней')}</span><span>Ур. ${H.lvl}</span>`}}catch(e){}
+    setTimeout(()=>splashOff(),D.tasks?1500:8000);loadAll().finally(()=>splashOff())}
   document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.auth&&Date.now()-(S.syncedAt||0)>60000)loadAll()});
   setInterval(()=>{const dk=night();if(dk!==document.body.classList.contains('dark'))render()},60000);
+  matchMedia('(min-width:1000px)').addEventListener('change',()=>render());
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

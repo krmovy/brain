@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F7F5FC">
+<meta name="description" content="Мозг — личный трекер дня, работы и целей">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -18,9 +19,9 @@
 /* ===== Мозг 3.0 · тема: светлая днём (пастель, как Tiimo), тёмная с 19:00 ===== */
 :root{--bg:#F7F5FC;--card:#FFFFFF;--tx:#1F2230;--mu:#7A7F8E;--line:#ECEAF3;--ac:#6C5CE7;--acs:#EEEBFF;
  --w:#5B7BD5;--ws:#E3EAFE;--b:#C0569A;--bs:#FBE3F0;--z:#3E9A63;--zs:#DDF3E4;--l:#C2852F;--ls:#FCEBD3;--r:#E05D5D;--rs:#FDE6E6;--sh:0 1px 3px rgba(30,20,80,.07);--ease:cubic-bezier(.2,.8,.2,1)}
-body.dark{--bg:#14151C;--card:#1E2029;--tx:#ECEDF3;--mu:#8A8FA0;--line:#2A2D38;--ac:#9C90FF;--acs:#2A2645;--ws:#232B44;--bs:#3A2232;--zs:#1E3427;--ls:#3A2E1C;--rs:#3B2224;--sh:none}
+html:has(body.dark){background:#14151C}body.dark{--bg:#14151C;--card:#1E2029;--tx:#ECEDF3;--mu:#8A8FA0;--line:#2A2D38;--ac:#9C90FF;--acs:#2A2645;--ws:#232B44;--bs:#3A2232;--zs:#1E3427;--ls:#3A2E1C;--rs:#3B2224;--sh:none}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:var(--bg);color:var(--tx);font-family:'Golos Text',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;transition:background .4s}
+html,body{margin:0;min-height:100vh;background:var(--bg);color:var(--tx);font-family:'Golos Text',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;transition:background .4s}
 button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none;padding:0;text-align:inherit}a{color:inherit}
 #view{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 110px);animation:fade .3s}
 @keyframes fade{from{opacity:0;transform:translateY(6px)}}
@@ -126,11 +127,48 @@ button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer;bo
 .lvlup{position:fixed;inset:0;z-index:95;display:grid;place-items:center;text-align:center;background:rgba(20,15,40,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#fff}.lvlup img{height:260px;animation:jmp 1s var(--ease) infinite}.lvlup b{display:block;font-size:24px;margin-top:10px}@keyframes jmp{40%{transform:translateY(-30px)}}
 .login{text-align:center;padding-top:40px}.login img{height:200px}.login h2{margin:8px 0 2px;font-size:28px}
 .loading{text-align:center;padding-top:80px;color:var(--mu)}.loading img{height:180px;animation:bob 2s infinite}
+/* ===== Экран загрузки ===== */
+#splash{position:fixed;inset:0;z-index:120;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(120% 70% at 50% 30%,#fff 0%,#F2EEFD 55%,#FBE7F0 100%);transition:opacity .35s,visibility .35s}
+body.dark #splash{background:radial-gradient(120% 70% at 50% 30%,#2A2645 0%,#14151C 70%)}
+#splash.out{opacity:0;visibility:hidden;pointer-events:none}
+#splash .ch{height:240px;display:flex;align-items:flex-end;animation:spb 2.6s ease-in-out infinite}#splash .ch img{height:100%;max-width:220px;object-fit:contain}
+#splash .shd{width:110px;height:14px;border-radius:50%;background:rgba(60,40,120,.12);margin-top:-6px}body.dark #splash .shd{background:rgba(0,0,0,.4)}
+@keyframes spb{50%{transform:translateY(-8px)}}
+#splash h3{margin:18px 0 4px;font-size:24px}#splash p{margin:0;font-size:14px;color:var(--mu)}
+#splash .chips{justify-content:center;min-height:28px}#splash .chips span{font-size:12px;font-weight:600;background:var(--card);border-radius:99px;padding:6px 11px;box-shadow:var(--sh)}
+#splash .ld{width:120px;height:5px;border-radius:9px;background:rgba(108,92,231,.15);margin-top:22px;overflow:hidden}#splash .ld i{display:block;height:100%;width:40%;border-radius:9px;background:var(--ac);animation:spl 1.2s ease-in-out infinite}
+@keyframes spl{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+.sme,.kbh{display:none}
+/* ===== Компьютер (шире 1000px) ===== */
+@media (min-width:1000px){
+ #view{max-width:none;margin:0 0 0 232px;padding:28px 36px 40px}
+ #nav{left:0;right:auto;top:0;bottom:0;width:232px;max-width:none;height:auto;margin:0;border-radius:0;box-shadow:none;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:22px 14px;font-size:14px;text-align:left}
+ #nav button{flex-direction:row;gap:10px;padding:10px 12px;border-radius:12px;font-weight:600}#nav button:hover{background:var(--bg)}#nav i{font-size:17px;width:20px;text-align:center}
+ #nav .on{background:var(--acs)!important;color:var(--ac)}
+ #nav .plus{order:5;width:auto;height:auto;border-radius:14px;font-size:14px;padding:12px;margin:12px 0 0;display:block;text-align:center;animation:none;color:#fff;background:var(--ac)}#nav .plus:hover{background:var(--ac)}#nav .plus:after{content:" Добавить"}
+ #nav [data-v=goals]{order:3}#nav [data-v=me]{order:4}
+ .sme{display:block;order:0;margin-bottom:12px}.smh{display:flex!important;align-items:center;gap:10px;width:100%;padding:4px 6px!important}.smh .av{width:46px;height:46px;border-radius:15px}.smh b{display:block;font-size:15px;color:var(--tx)}.smh small{display:block;font-size:12px;color:var(--mu);font-weight:500}
+ .sme .xp{width:auto;margin:8px 6px 0;height:5px;background:var(--acs)}
+ .kbh{display:block;order:6;margin:8px 0 0;font-size:11px;color:var(--mu);text-align:center;line-height:1.5}
+ .hd{max-width:none}.say{margin-top:12px}
+ .tcols{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:24px;margin-top:20px;align-items:start}
+ .tcols>div>:first-child,.tcols .plan{margin-top:0}.tcols>div>.btn{margin-top:10px}
+ .gcols{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:16px;align-items:start}.gcols>div>.lbl{margin-top:0;font-size:13px}.gcols .goal:first-of-type{margin-top:0}
+ .wsplit{display:grid;grid-template-columns:minmax(360px,1fr) 1.2fr;gap:28px;align-items:start}
+ .wr{position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto;background:var(--card);border-radius:24px;padding:20px;box-shadow:var(--sh)}.wr .back{display:none}
+ .ep{cursor:pointer;transition:transform .15s}.ep:hover{transform:translateX(3px)}.ep.sel{box-shadow:0 0 0 2px var(--ac)}
+ #sheetWrap{align-items:center}#sheet{border-radius:26px;max-height:85vh;padding:16px 22px 24px;animation:pop .3s var(--ease)}#sheet .grab{display:none}
+ #toast{top:20px}
+ .bl:hover,.q:hover,.m:hover,.vd:hover{filter:brightness(.98)}
+}
 </style>
 </head>
 <body>
+<div id="splash"><div class="ch"><img id="spI" alt=""></div><div class="shd"></div><h3 id="spT">Мозг</h3><p id="spS"></p><div class="chips" id="spC"></div><div class="ld"><i></i></div></div>
+<script>(function(){var h=new Date().getHours(),P=h<6?['p_yawn','Поздно уже','Открываю…']:h<11?['p_wave','Доброе утро!','Собираю твой день…']:h<19?['p_laptop','Привет!','Подтягиваю задачи и встречи…']:['p_yawn','Вечер, Ерназар','Закроем день за 2 минуты?'];
+if(h>=19||h<6)document.body.classList.add('dark');document.getElementById('spI').src='char/'+P[0]+'.png';document.getElementById('spT').textContent=P[1];document.getElementById('spS').textContent=P[2]})()</script>
 <main id="view"></main>
-<nav id="nav" hidden><button data-act="nav" data-v="today"><i>☀︎</i>Сегодня</button><button data-act="nav" data-v="work"><i>▦</i>Работа</button><button class="plus" data-act="add" aria-label="Быстрая запись">+</button><button data-act="nav" data-v="goals"><i>◎</i>Цели</button><button data-act="nav" data-v="me"><i>☺</i>Я</button></nav>
+<nav id="nav" hidden><div class="sme" id="sme"></div><button data-act="nav" data-v="today"><i>☀︎</i>Сегодня</button><button data-act="nav" data-v="work"><i>▦</i>Работа</button><button class="plus" data-act="add" aria-label="Быстрая запись">+</button><button data-act="nav" data-v="goals"><i>◎</i>Цели</button><button data-act="nav" data-v="me"><i>☺</i>Я</button><p class="kbh">N — запись · F — фокус<br>1–4 — разделы</p></nav>
 <div id="sheetWrap" hidden><div class="back2" data-act="close"></div><div id="sheet" role="dialog" aria-modal="true"></div></div>
 <div id="focus" hidden></div>
 <div id="toast" role="status" aria-live="polite"></div>
