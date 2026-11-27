@@ -20,6 +20,8 @@ case 'nagMeet':S.mid=d.id;S.mtab='after';go('meet');break;
 case 'nagTask':openSheet({type:'task',id:d.id});setTimeout(()=>{const x=$('#tUpd');if(x){x.focus();x.scrollIntoView({block:'center'})}},120);break;
 case 'meetSkip':{const m=(D.meetings||[]).find(x=>x.id===d.id);if(!m)return;m.status='skip';render();await guard(()=>upd('meetings',m.id,{status:'skip'}),'Ок, без резюме');break}
 case 'qFav':{const q=(D.quotes||[]).find(x=>x.id===d.id);if(!q)return;q.fav=!q.fav;render();await guard(()=>upd('quotes',q.id,{fav:q.fav}),q.fav?'♥ В любимых':'');break}
+case 'wkMove':{if(!S.conn)return toast('Подключи сервер рабочей таблицы в ⚙️');const sat=addDays(t,1),sun=addDays(t,2),mon=addDays(t,3),L=myOpen().filter(x=>x.dl===sat||x.dl===sun);if(!L.length)return;
+  await guard(async()=>{for(const x of L){const cells={J:toRu(mon),K:(+x.dl_moves||0)+1,M:`${short(t)}: DL ${toRu(x.dl)} → ${toRu(mon)}. Выходные`,Q:ru(new Date())};await setRow(C.SVC,'Задачи',{A:x.id},x.row_num,cells);Object.assign(x,{dl:mon,dl_moves:cells.K,week_upd:cells.M,updated:cells.Q})}},`Перенёс ${L.length} на понедельник ✓`);render();break}
 case 'qTog':LS.set('qMin',!LS.get('qMin',false));render();break;
 case 'nextOther':S.nxi=(S.nxi||0)+1;render();break;
 case 'nextTake':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;const dr=dayRec(t);dr.top3=dr.top3||[];dr.top3.push({kind:'task',ref:x.id,t:x.id+' '+x.title,why:'сверх плана',extra:true});S.nxi=0;await guard(()=>upsertDay(t,{top3:dr.top3}));focusStart(x.id+' '+x.title,x.id);render();break}
@@ -46,7 +48,7 @@ case 'ping':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;copy(`Пр�
 /* обещания */
 case 'promOpen':openSheet({type:'prom',id:d.id});break;
 case 'promDone':{const p=(D.promises||[]).find(y=>y.id===d.id);if(!p)return;p.status='Сделано';p.updated_at=new Date().toISOString();closeSheet();celebrate();render();await guard(()=>setRow(C.JB,'Обещания',{A:p.id},0,{I:'Сделано'}),'Обещание закрыто ✓');break}
-case 'promMove':{const p=(D.promises||[]).find(y=>y.id===d.id);p.due=addDays(t,1);closeSheet();render();await guard(()=>upd('promises',p.id,{due:p.due}),'Перенёс на завтра');break}
+case 'promMove':{const p=(D.promises||[]).find(y=>y.id===d.id);p.due=nextWork(addDays(t,1));closeSheet();render();await guard(()=>upd('promises',p.id,{due:p.due}),'Перенёс на завтра');break}
 /* встречи */
 case 'meet':S.mid=d.id;S.mtab=null;go('meet');break;
 case 'addMeet':S.addType='Встреча';openSheet({type:'add'});break;
@@ -98,8 +100,8 @@ case 'freeze':await guard(()=>upsertDay(addDays(t,-1),{freeze_used:true}),'🧊 
 case 'buy':{const s=(D.shop||[]).find(x=>x.id===d.id);if(s.bought)return;if(hero().coins<+s.price)return toast('Не хватает монет — ещё немного');s.bought=true;celebrate(true);render();await guard(()=>upd('shop',s.id,{bought:true}),'Награда твоя 🎁 Заслужил');break}
 case 'rewardNew':{const x=prompt('Награда (например «Вечер игр»)');if(!x)return;const p=prompt('Цена в монетах','150');await guard(()=>ins('shop',{title:x.trim(),price:+p||150}),'Награда добавлена');render();break}
 /* закрыть день */
-case 'tail':case 'tailsAll':{const dr=dayRec(t),tm=dayRec(addDays(t,1)),tails=(dr.top3||[]).filter(x=>!top3Done(x)),mv=n==='tail'?[tails[+d.i]]:tails;await guard(()=>upsertDay(addDays(t,1),{top3:(tm.top3||[]).concat(mv.filter(x=>!(tm.top3||[]).some(y=>y.ref===x.ref))).slice(0,3)}),'Перенёс на завтра');render();break}
-case 'closeDay':{const note=val('jNote'),nw=val('tmNew');await guard(async()=>{if(nw){const tm=dayRec(addDays(t,1));await upsertDay(addDays(t,1),{top3:(tm.top3||[]).concat([{kind:'text',ref:'t'+Date.now(),t:nw,why:'план'}]).slice(0,3)})}
+case 'tail':case 'tailsAll':{const dr=dayRec(t),tm=dayRec(nxDay(t)),tails=(dr.top3||[]).filter(x=>!top3Done(x)),mv=n==='tail'?[tails[+d.i]]:tails;await guard(()=>upsertDay(nxDay(t),{top3:(tm.top3||[]).concat(mv.filter(x=>!(tm.top3||[]).some(y=>y.ref===x.ref))).slice(0,3)}),'Перенёс на '+(nxLbl(t)==='пн'?'понедельник':'завтра'));render();break}
+case 'closeDay':{const note=val('jNote'),nw=val('tmNew');await guard(async()=>{if(nw){const tm=dayRec(nxDay(t));await upsertDay(nxDay(t),{top3:(tm.top3||[]).concat([{kind:'text',ref:'t'+Date.now(),t:nw,why:'план'}]).slice(0,3)})}
   await upsertDay(t,{closed:true,note});if(note)await appendRow(C.JB,'Журнал!A1',['L'+Date.now().toString(36).slice(-6).toUpperCase(),ru(new Date()),'','','Итог дня',note,'','Мозг',''])});celebrate(true);toast('День закрыт 🌙 +30 XP · серия '+streak());go('today');levelCheck();break}
 /* «+» */
 case 'add':openSheet({type:'add'});setTimeout(()=>{const x=$('#addT');if(x)x.focus()},60);break;

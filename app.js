@@ -43,11 +43,12 @@ const dayRec=day=>(D.days||[]).find(x=>x.day===day)||{day,top3:[],planned:false,
 
 /* ---------- расчёты ---------- */
 const myOpen=()=>(D.tasks||[]).filter(t=>isMine(t)&&openT(t));
-function feed(){const t=today();
+function feed(){const t=today();if(wkend())return [];
   const tasks=myOpen().filter(x=>x.dl&&x.dl<=t).sort((a,b)=>a.dl<b.dl?-1:1).map(x=>({kind:'task',id:x.id,t:x.id+' '+x.title,sub:`${x.epic_id||'вне эпика'} · DL ${short(x.dl)}`,od:x.dl<t?Math.round((new Date(t)-new Date(x.dl))/864e5):0,c:'w',it:x}));
   const pr=(D.promises||[]).filter(p=>p.status!=='Сделано'&&p.due&&p.due<=t).map(p=>{const me=!/мне|жду/i.test(p.direction||'');return {kind:'prom',id:p.id,t:(p.person?p.person+': ':'')+p.what,sub:(me?'я обещал':'мне обещали')+(p.due<t?' · просрочено':' · сегодня'),od:0,c:me?'ac':'l',it:p}});
   return tasks.concat(pr)}
 function suggestTop3(){const t=today(),out=[],seen=new Set();const add=x=>{if(x&&!seen.has(x.ref)&&out.length<3){seen.add(x.ref);out.push(x)}};
+  if(wkend())return wkTop3();
   myOpen().filter(x=>x.dl&&x.dl<t).sort((a,b)=>a.dl<b.dl?-1:1).slice(0,1).forEach(x=>add({kind:'task',ref:x.id,t:x.id+' '+x.title,why:'просрочено'}));
   const p1=new Set((D.epics||[]).filter(e=>e.priority==='P1'&&e.status!=='Закрыт').map(e=>e.id));
   myOpen().filter(x=>p1.has(x.epic_id)).sort((a,b)=>(a.dl||'9')<(b.dl||'9')?-1:1).slice(0,2).forEach(x=>add({kind:'task',ref:x.id,t:x.id+' '+x.title,why:x.epic_id+' · P1'}));
@@ -57,7 +58,7 @@ function suggestTop3(){const t=today(),out=[],seen=new Set();const add=x=>{if(x&
 function top3Done(x){if(x.kind==='task'){const t=(D.tasks||[]).find(y=>y.id===x.ref);return t&&!openT(t)}if(x.kind==='idea'){const i=(D.ideas||[]).find(y=>y.id===x.ref);return i&&dayOf(i.updated_at)===today()&&IDEA_FLOW.indexOf(ist(i))>=3}if(x.kind==='prom'){const p=(D.promises||[]).find(y=>y.id===x.ref);return p&&p.status==='Сделано'}return !!x.done}
 function todayMeetings(){return (D.meetings||[]).filter(m=>m.day===today()&&m.status!=='skip').sort((a,b)=>(a.start_at||'')<(b.start_at||'')?-1:1)}
 function quests(){const t=today(),ms=todayMeetings(),nx=ms.find(m=>new Date(m.end_at||m.start_at)>new Date());
-  const q1=nx?{t:'Подготовься',s:'к встрече '+hm(nx.start_at),done:!!nx.prep,act:'meet',id:nx.id}:{t:'Закрой задачу',s:'одну из ленты',done:(D.tasks||[]).some(x=>isMine(x)&&x.status==='Готово'&&fromRu(x.updated)===t),act:'go',v:'work'};
+  const q1=wkend()?(()=>{const b=bizStep();return {t:'Бизнес',s:b?b.t.slice(0,24):'шаг к оплате',done:(dayRec(t).top3||[]).some(x=>String(x.ref||'').startsWith('biz')&&x.done),act:'goals',v:'biz'}})():nx?{t:'Подготовься',s:'к встрече '+hm(nx.start_at),done:!!nx.prep,act:'meet',id:nx.id}:{t:'Закрой задачу',s:'одну из ленты',done:(D.tasks||[]).some(x=>isMine(x)&&x.status==='Готово'&&fromRu(x.updated)===t),act:'go',v:'work'};
   const id=(D.ideas||[]).find(i=>['Идея','Сырая','Пишу','Готов','Сценарий','Снимаю'].includes(i.status));
   const q2={t:'Шаг блога',s:id?id.title.slice(0,22):'выбери идею',done:(D.ideas||[]).some(i=>dayOf(i.updated_at)===t&&i.status!=='Сырая'),act:'idea',id:id&&id.id};
   const q3={t:'Личное',s:'отметь привычку',done:(D.hmarks||[]).some(m=>m.day===t),act:'goals',v:'life'};
@@ -75,6 +76,7 @@ function streak(){const m=xpByDay(),dd=dayRec;let n=0,d=today();if(!(m[d]>0)&&!d
 function weekStats(off){const t=today(),wd=(new Date().getDay()+6)%7,mon=addDays(t,-wd-7*off),m=xpByDay();let xp=0,closed=0,focus=0,vids=0;
   for(let i=0;i<7;i++){const d=addDays(mon,i);if(off===0&&d>t)break;xp+=m[d]||0;if(dayRec(d).closed)closed++;focus+=(D.focus||[]).filter(f=>f.day===d).reduce((a,f)=>a+f.minutes,0);vids+=(D.ideas||[]).filter(x=>ist(x)==='Вышел'&&dayOf(x.updated_at)===d).length}return {xp,closed,focus,vids}}
 function mood(){const h=new Date().getHours(),q=quests();if(S.win&&Date.now()-S.win<6000)return ['f_laugh',['Красава! 🔥','Так держать!','Вот это темп 💪'][S.win%3]];
+  if(wkend()&&h>=6&&h<22&&!q.every(x=>x.done))return ['f_cool',dow()===6?'Суббота. Работа ждёт до понедельника — сегодня блог и бизнес 🎬':'Воскресенье. Блог, бизнес и отдых — работа завтра 🌿'];
   const ng=nags().length;if(ng)return ['f_focus',`Сначала запиши итоги — ${ng} ${plural(ng,'пункт','пункта','пунктов')} ниже ✍️`];
   if(q.every(x=>x.done))return ['f_grin','Все задания закрыты — сундук твой 🎁'];if(h>=22||h<6)return ['f_sleepy','Поздно. Закрой день и спать 🌙'];
   if(h<11&&!dayRec(today()).planned)return ['f_happy','Доброе утро! Спланируем день?'];const od=feed().filter(x=>x.od).length;if(od>=2)return ['f_focus',`${od} просрочено. Начнём с одной?`];
@@ -88,9 +90,23 @@ const lbl=(a,b,act)=>`<div class="lbl"><span>${a}</span>${b?`<span class="lk" ${
 const back=(v,t)=>`<button class="back" data-act="go" data-v="${v}">‹ ${t}</button>`;
 const seg=(items,cur,act)=>`<div class="seg">${items.map(i=>`<button class="${i[0]===cur?'on':''}" data-act="${act}" data-v="${i[0]}">${i[1]}</button>`).join('')}</div>`;
 
+/* ---------- выходные: работа отдыхает, фокус на блоге, бизнесе, личном ---------- */
+function bizStep(){if((D.clients||[]).some(c=>c.stage==='Оплатил'))return null;const st=Math.min(Math.max(0,...(D.habits||[]).map(h=>+h.step_biz||0)),11);return {i:st,t:LADDER[st]}}
+function wkTop3(){const out=[];
+  const ids=(D.ideas||[]).filter(i=>['Снимаю','Готов','Сценарий','Пишу','Идея','Сырая'].includes(i.status)).sort((a,b)=>['Снимаю','Готов','Сценарий','Пишу','Идея','Сырая'].indexOf(a.status)-['Снимаю','Готов','Сценарий','Пишу','Идея','Сырая'].indexOf(b.status));
+  const i=ids[0];out.push(i?{kind:'idea',ref:i.id,t:(['Снимаю','Готов','Сценарий'].includes(i.status)?'Снять: ':'Дописать: ')+i.title,why:'блог'}:{kind:'text',ref:'blog'+today(),t:'Блог: выбрать идею из находок и написать хук',why:'блог'});
+  const b=bizStep();out.push(b?{kind:'text',ref:'biz'+b.i,t:'Бизнес: '+b.t,why:(b.i+1)+'/12'}:{kind:'text',ref:'biz'+today(),t:'Бизнес: один шаг по воронке клиентов',why:'бизнес'});
+  const g=(D.quests||[]).find(q=>q.sphere==='Личная жизнь'&&['Босс','Эпик'].includes(q.kind)&&q.status!=='Готово');
+  out.push(g?{kind:'text',ref:'life'+g.id,t:'Личное: '+g.title,why:'квартал'}:{kind:'text',ref:'life'+today(),t:'Личное: спорт / отдых без телефона',why:'отдых'});
+  return out}
+function vWeekendCard(){const t=today();
+  if(wkend()){const mon=nextWork(t),n=myOpen().filter(x=>x.dl&&x.dl<=mon).length;return `<section class="wk"><b>${dow()===6?'Суббота':'Воскресенье'} — выходной от работы 🏖</b><p>Рабочие задачи и напоминания спрятаны до понедельника${n?` (там ждут ${n} ${plural(n,'задача','задачи','задач')} со сроком)`:''}. Сегодня максимум — блог и бизнес.</p></section>`}
+  if(dow()===5){const sat=addDays(t,1),sun=addDays(t,2),L=myOpen().filter(x=>x.dl===sat||x.dl===sun);if(L.length)return `<section class="wk fri"><b>Пятница: ${L.length} ${plural(L.length,'срок','срока','сроков')} на выходных</b><p>${esc(L.map(x=>x.id).join(', '))} — на выходных не работаем. Закрой сегодня или перенеси на понедельник.</p><button class="btn" data-act="wkMove">Перенести на пн</button></section>`}
+  return ''}
+
 /* ---------- СЕГОДНЯ: напоминания, цитата, «дальше», сверх плана ---------- */
-function nags(){if(LS.get('nagSnooze',0)>Date.now())return [];const now=new Date(),t=today(),out=[];
-  (D.meetings||[]).filter(m=>m.status!=='skip'&&!m.summary&&m.end_at&&new Date(m.end_at)<now&&now-new Date(m.end_at)<3*864e5).sort((a,b)=>a.end_at<b.end_at?1:-1).forEach(m=>{const mn=Math.round((now-new Date(m.end_at))/6e4);out.push({k:'meet',id:m.id,t:'Резюме встречи «'+m.title+'»',s:'Прошла '+(mn<60?mn+' мин':mn<1440?Math.round(mn/60)+' ч':Math.round(mn/1440)+' дн')+' назад. Что решили и кто что делает · +15 XP'})});
+function nags(){if(wkend()||LS.get('nagSnooze',0)>Date.now())return [];const now=new Date(),t=today(),out=[];
+  (D.meetings||[]).filter(m=>m.status!=='skip'&&!m.summary&&m.end_at&&new Date(m.end_at)<now&&now-new Date(m.end_at)<4*864e5).sort((a,b)=>a.end_at<b.end_at?1:-1).forEach(m=>{const mn=Math.round((now-new Date(m.end_at))/6e4);out.push({k:'meet',id:m.id,t:'Резюме встречи «'+m.title+'»',s:'Прошла '+(mn<60?mn+' мин':mn<1440?Math.round(mn/60)+' ч':Math.round(mn/1440)+' дн')+' назад. Что решили и кто что делает · +15 XP'})});
   myOpen().filter(x=>['В работе','Блокер'].includes(x.status)).map(x=>{const u=fromRu(x.updated);return [x,u?Math.round((new Date(t)-new Date(u))/864e5):99]}).filter(a=>a[1]>=3).sort((a,b)=>b[1]-a[1]).forEach(([x,n])=>out.push({k:'task',id:x.id,t:String(x.title||x.id),s:(n>=99?'Апдейта ещё не было. ':'Апдейт '+n+' '+plural(n,'день','дня','дней')+' назад. ')+(x.next_step?'Что с шагом «'+String(x.next_step).slice(0,60)+(String(x.next_step).length>60?'…':'')+'»?':'Что сделал и какой следующий шаг?')}));
   return out}
 function vNags(){const n=nags();if(!n.length)return '';return `<section class="nag"><div class="nh"><b>✍️ Нужно записать · ${n.length}</b><button class="lk" data-act="nagLater">позже</button></div>${n.slice(0,4).map(x=>`<button class="ni" data-act="${x.k==='meet'?'nagMeet':'nagTask'}" data-id="${esc(x.id)}"><span class="t">${esc(x.t)}<small>${esc(x.s)}</small></span>${x.k==='meet'?`<span class="x" data-act="meetSkip" data-id="${esc(x.id)}">не нужно</span>`:''}<i>›</i></button>`).join('')}${n.length>4?`<p class="sub" style="margin:6px 2px 0">и ещё ${n.length-4}</p>`:''}</section>`}
@@ -104,7 +120,7 @@ function vTop3(dr){const L=(dr.top3||[]).map((x,i)=>[x,i]).filter(a=>!a[0].extra
   L.forEach(([x,i],k)=>{const d=top3Done(x);if(k===fu&&k>0)o+=`<div class="nx"><b>→</b><span>Дальше: <b>${esc(x.t)}</b>${x.why?' · '+esc(x.why):''}</span><button class="lk" data-act="focus" data-t="${esc(x.t)}" data-ref="${esc(x.ref||'')}">Фокус 25′</button></div>`;
     o+=blk(d?'z':'ac',['①','②','③','④'][k]||'•',esc(x.t),esc(x.why||''),`<button class="ck ${d?'on':''}" data-act="topDone" data-i="${i}">${d?'✓':''}</button>`,`data-act="topOpen" data-i="${i}"`).replace('class="bl"',`class="bl ${d?'done':''}"`)});
   return dn===L.length?o+vMore(dr):o}
-function bestNext(dr){const t=today(),inTop=new Set((dr.top3||[]).map(x=>x.ref)),p1=new Set((D.epics||[]).filter(e=>e.priority==='P1'&&e.status!=='Закрыт').map(e=>e.id)),t2=addDays(t,2);
+function bestNext(dr){if(wkend())return [];const t=today(),inTop=new Set((dr.top3||[]).map(x=>x.ref)),p1=new Set((D.epics||[]).filter(e=>e.priority==='P1'&&e.status!=='Закрыт').map(e=>e.id)),t2=addDays(t,2);
   return myOpen().filter(x=>!inTop.has(x.id)).map(x=>{let s=0;const why=[];if(x.dl&&x.dl<t){s+=50;why.push(['r','просрочено'])}else if(x.dl&&x.dl<=t2){s+=30;why.push(['r','DL '+short(x.dl)])}
     if(p1.has(x.epic_id)){s+=20;why.push(['y','P1 эпик'])}if(x.status==='В работе'){s+=10;why.push(['g','уже в работе'])}if(x.dl&&x.dl>t2){s+=5;why.push(['g','DL '+short(x.dl)])}return {x,s,why}}).sort((a,b)=>b.s-a.s)}
 function vMore(dr){const ex=(dr.top3||[]).map((x,i)=>[x,i]).filter(a=>a[0].extra),exd=ex.filter(a=>top3Done(a[0])).length;
@@ -112,19 +128,20 @@ function vMore(dr){const ex=(dr.top3||[]).map((x,i)=>[x,i]).filter(a=>a[0].extra
   o+=lbl('Сверх плана','×2 XP');
   o+=ex.map(([x,i])=>{const d=top3Done(x);return blk(d?'z':'ac','＋',esc(x.t),d?'+50 XP ✓':'сверх плана',`<button class="ck ${d?'on':''}" data-act="topDone" data-i="${i}">${d?'✓':''}</button>`,`data-act="topOpen" data-i="${i}"`).replace('class="bl"',`class="bl ${d?'done':''}"`)}).join('');
   const B=bestNext(dr);if(B.length){const b=B[(S.nxi||0)%B.length];o+=`<div class="ext"><div class="top"><span>ЛУЧШАЯ СЛЕДУЮЩАЯ</span><span>+50 XP</span></div><b>${esc(b.x.id+' '+b.x.title)}</b><p>${esc(b.x.epic_id||'вне эпика')}${b.x.next_step?' · '+esc(b.x.next_step):''}</p>${b.why.length?`<div class="why">${b.why.map(w=>`<span class="${w[0]}">${esc(w[1])}</span>`).join('')}</div>`:''}<div class="two"><button class="btn" data-act="nextTake" data-id="${esc(b.x.id)}">Взять · фокус 25′</button><button class="btn g" data-act="nextOther">Другую${B.length>1?` (${B.length})`:''}</button></div></div>`}
-  else o+='<p class="empty">Рабочие задачи разобраны 👌 Возьми шаг блога ниже</p>';
+  else o+=wkend()?'<p class="empty">Выходной: работу не трогаем 🏖 Ещё шаг — блог или бизнес ниже</p>':'<p class="empty">Рабочие задачи разобраны 👌 Возьми шаг блога ниже</p>';
   return o+vPrep()+vDig()}
-function vPrep(){const now=new Date(),tm=addDays(today(),1),ms=todayMeetings().filter(m=>new Date(m.start_at)>now&&!m.prep).slice(0,1),dl=myOpen().filter(x=>x.dl===tm);if(!ms.length&&!dl.length)return '';
+function vPrep(){if(wkend())return '';const now=new Date(),tm=addDays(today(),1),ms=todayMeetings().filter(m=>new Date(m.start_at)>now&&!m.prep).slice(0,1),dl=myOpen().filter(x=>x.dl===tm);if(!ms.length&&!dl.length)return '';
   return lbl('К чему готовиться')+`<div class="mt">${ms.map(m=>`<button class="m" data-act="meet" data-id="${m.id}"><span class="tm">${hm(m.start_at)}</span><span class="t">${esc(m.title)}<small>подготовки нет</small></span><span class="tag">✨ Подготовить</span></button>`).join('')}${dl.length?`<button class="m" data-act="go" data-v="work"><span class="tm">Завтра</span><span class="t">${dl.length} ${plural(dl.length,'дедлайн','дедлайна','дедлайнов')}: ${esc(dl.map(x=>x.id).join(', '))}<small>${esc(dl.filter(x=>x.status!=='В работе').map(x=>x.id+' — '+x.status).join(' · ')||'всё в работе')}</small></span><span class="tag r">Посмотреть</span></button>`:''}</div>`}
 function vDig(){const t=today(),out=[],mine=new Set(myOpen().map(x=>x.epic_id).filter(Boolean));
-  (D.epics||[]).filter(e=>mine.has(e.id)&&e.status!=='Закрыт').map(e=>[e,epicStat(e).idle]).filter(a=>a[1]>=7).sort((a,b)=>b[1]-a[1]).slice(0,1).forEach(([e,n])=>out.push(['w','💼',`${e.id} стоит ${n} дн`,'Один шаг: апдейт в таблицу, 5 мин',`data-act="epic" data-id="${e.id}"`,'Сделать']));
+  if(wkend()){const b=bizStep();if(b)out.push(['z','💸','Бизнес: '+b.t,'Следующая ступенька к первой оплате','data-act="goTo" data-v="biz"','Сделать'])}
+  if(!wkend())(D.epics||[]).filter(e=>mine.has(e.id)&&e.status!=='Закрыт').map(e=>[e,epicStat(e).idle]).filter(a=>a[1]>=7).sort((a,b)=>b[1]-a[1]).slice(0,1).forEach(([e,n])=>out.push(['w','💼',`${e.id} стоит ${n} дн`,'Один шаг: апдейт в таблицу, 5 мин',`data-act="epic" data-id="${e.id}"`,'Сделать']));
   const id=(D.ideas||[]).find(i=>['Пишу','Готов','Снимаю','Сценарий','Идея','Сырая'].includes(i.status));if(id)out.push(['b','🎬',String(id.title||'Идея').slice(0,34),{Идея:'Напиши хук, 10 мин',Сырая:'Напиши хук, 10 мин',Пишу:'Допиши сценарий, 15 мин',Сценарий:'Сними, 15 мин',Готов:'Сними, 15 мин',Снимаю:'Доснимай'}[id.status]||'Один шаг',`data-act="idea" data-id="${id.id}"`,'Открыть']);
   if(!(D.hmarks||[]).some(m=>m.day===t))out.push(['z','🌿','Привычки за сегодня','Ни одной отметки — серия под угрозой','data-act="goTo" data-v="life"','Отметить']);
   if(!out.length)return '';return lbl('Куда копнуть')+`<div class="dig">${out.slice(0,2).map(d=>`<button class="dg" style="--s:var(--${d[0]}s)" ${d[4]}><i>${d[1]}</i><b>${esc(d[2])}</b><small>${esc(d[3])}</small><em>${d[5]} →</em></button>`).join('')}</div>`}
 
 /* ---------- СЕГОДНЯ ---------- */
 function vToday(){const t=today(),h=new Date().getHours(),dr=dayRec(t),H=hero(),md=mood(),q=quests(),qd=q.filter(x=>x.done).length;
-  let o=`<div class="hd">${av(md[0])}<div class="t"><b>${h<11?'Доброе утро!':h<18?'Сегодня':'Вечер'}</b><small>${WD[new Date().getDay()]}, ${new Date().getDate()} ${MON[new Date().getMonth()]} · Ур. ${H.lvl} ${H.name}</small></div><button class="chip" data-act="go" data-v="me">🔥 ${streak()}</button></div><div class="say">${esc(md[1])}</div>`+vNags()+quoteCard()+`<div class="tcols"><div>`;
+  let o=`<div class="hd">${av(md[0])}<div class="t"><b>${h<11?'Доброе утро!':h<18?'Сегодня':'Вечер'}</b><small>${WD[new Date().getDay()]}, ${new Date().getDate()} ${MON[new Date().getMonth()]} · Ур. ${H.lvl} ${H.name}</small></div><button class="chip" data-act="go" data-v="me">🔥 ${streak()}</button></div><div class="say">${esc(md[1])}</div>`+vWeekendCard()+vNags()+quoteCard()+`<div class="tcols"><div>`;
   if(!dr.planned&&!dr.closed&&h<14){const sg=suggestTop3();S.plan=S.plan||sg;
     o+=`<section class="plan"><h3>Спланируем день?</h3><p>Я подобрал 3 главных. Убери лишнее или выбери другое.</p>${S.plan.map((x,i)=>`<div class="pick"><span class="t">${esc(x.t)}</span><em>${esc(x.why||'')}</em><button class="x" data-act="planDel" data-i="${i}">✕</button></div>`).join('')}${S.plan.length<3?`<button class="pick add" data-act="planAdd">＋ добавить</button>`:''}<img src="char/p_wave.png" alt=""></section><button class="btn" data-act="planGo">Погнали →</button>`}
   else if((dr.top3||[]).length){o+=vTop3(dr)}
@@ -143,9 +160,9 @@ function vToday(){const t=today(),h=new Date().getHours(),dr=dayRec(t),H=hero(),
 function vClose(){const t=today(),dr=dayRec(t),w=weekStats(0),fm=(D.focus||[]).filter(f=>f.day===t).reduce((a,f)=>a+f.minutes,0),xp=hero().m[t]||0,tails=(dr.top3||[]).filter(x=>!top3Done(x));
   let o=back('today','Сегодня')+`<div class="hd">${av('f_proud')}<div class="t"><b>Закроем день?</b><small>2 минуты · +30 XP за итог</small></div><span class="chip">🔥 ${streak()}</span></div>`;
   o+=`<div class="sum"><div><b>${(dr.top3||[]).filter(top3Done).length}/${(dr.top3||[]).length||0}</b><small>главных</small></div><div><b>${Math.floor(fm/60)} ч ${fm%60}</b><small>фокус</small></div><div><b>+${xp}</b><small>XP</small></div></div>`;
-  if(tails.length)o+=lbl('Хвосты','всё → завтра','data-act="tailsAll"')+tails.map((x,i)=>`<div class="mv"><span class="t">${esc(x.t)}</span><button class="x" data-act="tail" data-i="${i}">→ завтра</button></div>`).join('');
+  if(tails.length)o+=lbl('Хвосты','всё → '+nxLbl(),'data-act="tailsAll"')+tails.map((x,i)=>`<div class="mv"><span class="t">${esc(x.t)}</span><button class="x" data-act="tail" data-i="${i}">→ ${nxLbl()}</button></div>`).join('');
   o+=lbl('Одна строка в журнал')+`<textarea class="inp" id="jNote" rows="2" placeholder="Сегодня главное: …">${esc(dr.note||'')}</textarea>`;
-  const tm=dayRec(addDays(t,1)).top3||[];o+=lbl('Завтра',`${tm.length}/3`)+tm.map(x=>`<div class="mv"><span class="t">${esc(x.t)}</span></div>`).join('')+(tm.length<3?`<input class="inp" id="tmNew" placeholder="Добавить главное на завтра и Enter">`:'');
+  const tm=dayRec(nxDay(t)).top3||[];o+=lbl(dow(t)===5?'Понедельник':'Завтра',`${tm.length}/3`)+tm.map(x=>`<div class="mv"><span class="t">${esc(x.t)}</span></div>`).join('')+(tm.length<3?`<input class="inp" id="tmNew" placeholder="Добавить главное на завтра и Enter">`:'');
   o+=`<button class="btn" data-act="closeDay" style="margin-top:14px">Закрыть день 🌙</button>`;return o}
 
 /* ---------- ВСТРЕЧА ---------- */
@@ -176,7 +193,7 @@ function epicStat(e){const t=today(),ts=(D.tasks||[]).filter(x=>x.epic_id===e.id
 function vWork(){const t=today(),E=(D.epics||[]).filter(e=>e.status!=='Закрыт'),P={P1:1,P2:2,P3:3},all=(D.tasks||[]).filter(openT);
   const st=E.map(e=>[e,epicStat(e)]).sort((a,b)=>(P[a[0].priority]||2)-(P[b[0].priority]||2)||(b[1].od.length-a[1].od.length)||(b[1].risk-a[1].risk));
   if(desk()&&!st.some(x=>x[0].id===S.eid)&&st.length)S.eid=st[0][0].id;
-  let o=`<div class="ttl">Работа</div><div class="sub">${E.length} ${plural(E.length,'эпик','эпика','эпиков')} · P1: ${E.filter(e=>e.priority==='P1').length}</div>`;
+  let o=`<div class="ttl">Работа</div>${wkend()?'<div class="wk" style="margin:8px 0 0"><b>Выходной 🏖</b><p>Можно посмотреть, но лучше вернуться в понедельник.</p></div>':''}<div class="sub">${E.length} ${plural(E.length,'эпик','эпика','эпиков')} · P1: ${E.filter(e=>e.priority==='P1').length}</div>`;
   o+=`<div class="t3"><div class="r"><b>${all.filter(x=>x.dl&&x.dl<t).length}</b><small>просрочено</small></div><div class="y"><b>${all.filter(x=>x.dl&&x.dl>=t&&x.dl<=addDays(t,3)).length}</b><small>DL ≤ 3 дней</small></div><div class="${st.filter(x=>x[1].risk).length?'y':'g'}"><b>${st.filter(x=>x[1].risk).length}</b><small>эпиков в риске</small></div></div>`;
   const ms=todayMeetings();if(ms.length){const mins=ms.reduce((a,m)=>a+((new Date(m.end_at)-new Date(m.start_at))/6e4||0),0);o+=`<div class="ml">📅 Встречи сегодня ${ms.length} · ${Math.floor(mins/60)} ч ${Math.round(mins%60)} м<div class="bar"><i style="width:${Math.min(100,mins/480*100)}%"></i></div>${Math.round(mins/480*100)}%</div>`}
   o+=lbl('Эпики','по важности')+st.map(([e,s])=>{const c=s.od.length?'r':s.risk?'l':'z';return `<button class="ep${desk()&&e.id===S.eid?' sel':''}" style="--c:var(--${c})" data-act="epic" data-id="${e.id}"><div class="h"><span class="id">${e.id}</span><b>${esc(e.name)}</b><span class="pr ${e.priority==='P1'?'':'g'}">${e.priority||'P2'}</span></div>${e.goal?`<p>${esc(e.goal)}</p>`:''}<div class="pg"><div class="bar"><i style="width:${s.p*100}%;background:var(--${c})"></i></div>${s.dn.length}/${s.ts.length}${s.op.length?(s.eta?' · ~'+short(s.eta):' · темп 0'):''}</div><div class="tags">${s.od.length?`<span class="tg r">${s.od.length} просрочено · ${esc([...new Set(s.od.map(x=>fname(x.owner)))].join(', '))}</span>`:''}${s.soon.length?`<span class="tg y">${s.soon.length} DL ≤ 3 дн</span>`:''}${s.op.length&&s.idle>=7?`<span class="tg y">стоит ${s.idle} дн</span>`:''}${!s.od.length&&!s.soon.length&&!(s.op.length&&s.idle>=7)?'<span class="tg g">в сроке</span>':''}</div></button>`}).join('');

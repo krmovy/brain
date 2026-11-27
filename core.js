@@ -81,3 +81,8 @@ async function toAgent(agent,title,prompt,ref_table,ref_id){
   (S.queue=S.queue||[]).unshift(r);return r;
 }
 const desk=()=>matchMedia('(min-width:1000px)').matches;
+const dow=d=>new Date((d||today())+'T12:00:00').getDay();
+const wkend=d=>{const x=dow(d);return x===0||x===6};
+const nxDay=d=>{d=d||today();return addDays(d,dow(d)===5?3:1)};
+const nxLbl=d=>dow(d||today())===5?'пн':'завтра';
+const nextWork=d=>{let x=d;while(wkend(x))x=addDays(x,1);return x};
