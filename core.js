@@ -55,7 +55,7 @@ async function one(call){const [r]=await api([call]);if(!r.ok)throw new Error(r.
 const mirror=call=>{if(S.conn)one(call).catch(()=>{})}; // дубль в Notion/Jarvis на переходную неделю: молча, не мешает работе
 
 const book=id=>id===C.SVC?'SVC':'JB';
-const W_COLS={'Задачи':{F:'owner',H:'status',J:'dl',K:'dl_moves',M:'week_upd',N:'next_step',Q:'updated'},'Решения':{G:'status'},'Обещания':{I:'status'},'Проекты':{H:'mode'}};
+const W_COLS={'Задачи':{B:'epic_id',R:'goal',F:'owner',H:'status',J:'dl',K:'dl_moves',M:'week_upd',N:'next_step',Q:'updated'},'Решения':{G:'status'},'Обещания':{I:'status'},'Проекты':{H:'mode'}};
 function wCells(sheet,cells){const m=W_COLS[sheet]||{},o={};Object.keys(cells).forEach(c=>{if(m[c])o[m[c]]=m[c]==='dl'?(fromRu(cells[c])||null):cells[c]});return o}
 async function setRow(id,sheet,match,hint,cells){
   const call={action:'sheet.setRow',book:book(id),sheet,match,hint,cells};
