@@ -25,6 +25,21 @@ case 'wkMove':{if(!S.conn)return toast('Подключи сервер рабоч
 case 'nudgeX':$('#nudge').hidden=true;break;
 case 'planPush':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;const day=d.d==='0'?t:nxDay(t),dr=dayRec(day);dr.top3=dr.top3||[];if(dr.top3.some(y=>y.ref===x.id))return toast('Уже в плане');const main=dr.top3.filter(y=>!y.extra).length;
   dr.top3.push({kind:'task',ref:x.id,t:x.id+' '+x.title,why:'шаг: '+String(x.next_step||'').slice(0,40),extra:main>=3&&day===t});await guard(()=>upsertDay(day,{top3:dr.top3,planned:dr.planned||day===t}),day===t?'Добавил в план на сегодня ✓':'Добавил в план на '+(nxLbl()==='пн'?'понедельник':'завтра')+' ✓');render();break}
+case 'findOpen':openSheet({type:'find',id:d.id});break;
+case 'reelOpen':openSheet({type:'reel',id:d.id});break;
+case 'reelAgain':{const r=(D.reels||[]).find(x=>x.id===d.id);if(!r)return;await guard(async()=>{const i=await ins('ideas',{title:'Ещё раз: '+(r.title||'залёт'),kind:'Идея',status:'Идея',source:'Повтор залёта',hook:r.hook||null,topic:r.topic||null,ref:safeUrl(r.link)||null,notes:'Повтор залёта ('+fmtN(r.views||0)+' просм.). '+(r.why||'')});
+  await toAgent('Сценарист','Новая версия залёта: '+(r.title||''),`Мой ролик залетел: «${r.title||''}» (${r.link||''}), ${r.views||0} просмотров, ${r.saves||0} сохранений. Почему: ${r.why||'—'}.\nНапиши НОВУЮ версию с тем же механизмом, но другой темой/подачей. Формат: первая строка «~N с · тема · CTA …», потом «АКТ 1 — Название (0–10 с)» и кадры «1. …», реплики в «ёлочках», в конце КАДРЫ:/ЦВЕТ:/ЗВУК:. Запиши в ideas (id = ${i.id}): core (мысль 1–2 строки), hook, script, status = 'Готов'.`,'ideas',i.id);closeSheet();S.iid=i.id;go('idea')},'Создал идею и отправил Сценаристу ✓');break}
+case 'actTog':{const x=+d.i,st=S.actOpen&&S.actOpen.set;if(!st)return;const k=st.indexOf(x);if(k>=0)st.splice(k,1);else st.push(x);render();break}
+case 'coreEdit':{const i=(D.ideas||[]).find(x=>x.id===S.iid);const v=prompt('Мысль ролика — 1–2 строки: что зритель должен понять или почувствовать',i.core||'');if(v==null)return;i.core=v.trim();render();await guard(()=>upd('ideas',i.id,{core:i.core}),'Мысль сохранена ✓');break}
+case 'iEdit':S.iedit=true;render();break;
+case 'iEditDone':{const i=(D.ideas||[]).find(x=>x.id===S.iid);await guard(()=>saveIdea(i));S.iedit=false;S.actOpen=null;render();window.scrollTo(0,0);break}
+case 'shootGo':{const i=(D.ideas||[]).find(x=>x.id===S.iid);if(!i)return;const L=shootBeats(i),dn=new Set(i.shot||[]);S.shoot={id:i.id,n:Math.max(0,L.findIndex(x=>!dn.has(x.k)))};renderShoot();
+  if(IDEA_FLOW.indexOf(ist(i))<3){i.status='Снимаю';i.updated_at=new Date().toISOString();upd('ideas',i.id,{status:'Снимаю'}).catch(()=>{})}break}
+case 'shootX':S.shoot=null;renderShoot();render();break;
+case 'shootN':S.shoot.n+=+d.d;renderShoot();break;
+case 'shootMark':{const i=(D.ideas||[]).find(x=>x.id===S.shoot.id),L=shootBeats(i),c=L[S.shoot.n];if(!c)return;const st=new Set(i.shot||[]);if(st.has(c.k))st.delete(c.k);else{st.add(c.k);if(S.shoot.n<L.length-1)S.shoot.n++}i.shot=[...st];renderShoot();try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}
+  await upd('ideas',i.id,{shot:i.shot}).catch(e=>toast(errMsg(e)));break}
+case 'shootAll':{const i=(D.ideas||[]).find(x=>x.id===S.shoot.id);i.status='Снято';i.updated_at=new Date().toISOString();S.shoot=null;renderShoot();celebrate(true);render();await guard(()=>upd('ideas',i.id,{status:'Снято'}),'🎞 Всё снято! Дальше — монтаж');levelCheck();break}
 case 'qTog':LS.set('qMin',!LS.get('qMin',false));render();break;
 case 'nextOther':S.nxi=(S.nxi||0)+1;render();break;
 case 'nextTake':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;const dr=dayRec(t);dr.top3=dr.top3||[];dr.top3.push({kind:'task',ref:x.id,t:x.id+' '+x.title,why:'сверх плана',extra:true});S.nxi=0;await guard(()=>upsertDay(t,{top3:dr.top3}));focusStart(x.id+' '+x.title,x.id);render();break}
@@ -85,8 +100,8 @@ case 'ideaSave':{const i=(D.ideas||[]).find(x=>x.id===S.iid);await guard(()=>sav
 case 'hooks':{await loadHooks();const i=(D.ideas||[]).find(x=>x.id===S.iid);await saveIdea(i);openSheet({type:'hooks'});break}
 case 'hCat':S.sheet.cat=d.v;renderSheet();break;
 case 'hookPick':{const i=(D.ideas||[]).find(x=>x.id===S.iid),h=d.code&&(S.hooks||[]).find(x=>x.code===d.code);i.hook=h?h.text:d.text;i.hook_code=h?h.code:null;closeSheet();render();await guard(()=>upd('ideas',i.id,{hook:i.hook,hook_code:i.hook_code}),'Хук выбран — подставь своё в [скобки]');break}
-case 'findScript':case 'findBank':{const f=(D.finds||[]).find(x=>x.id===d.id);await guard(async()=>{const r=await ins('ideas',{title:f.title||'Идея из находки',kind:'Идея',status:'Идея',source:'Ресерчер',hook:f.hook||null,notes:f.adapt||null,ref:safeUrl(f.link)||null,topic:f.topic||null});f.decision='В банк';await upd('finds',f.id,{decision:'В банк'});
-  if(n==='findScript')await toAgent('Сценарист','Сценарий по находке: '+(f.title||''),`Напиши сценарий рилса 30–45 сек в стиле Ерназара по находке: ${f.title} (${f.link||''}). Почему залетело: ${f.why||'—'}. Как адаптировать: ${f.adapt||'—'}.\nЗапиши в ideas (id = ${r.id}): script, hook, status = 'Готов'.`,'ideas',r.id)},n==='findScript'?'В банке + отправил Сценаристу ✓':'В банке идей 💡');render();break}
+case 'findScript':case 'findBank':{const f=(D.finds||[]).find(x=>x.id===d.id);await guard(async()=>{const r=await ins('ideas',{title:f.title||'Идея из находки',kind:'Идея',status:'Идея',source:'Ресерчер',hook:f.hook||null,notes:f.adapt||null,ref:safeUrl(f.link)||null,topic:f.topic||null});f.decision='В банк';await upd('finds',f.id,{decision:'В банк'});closeSheet();
+  if(n==='findScript'){await toAgent('Сценарист','Сценарий по находке: '+(f.title||''),`Напиши сценарий рилса в стиле Ерназара по находке: ${f.title} (${f.link||''}). Почему залетело: ${f.why||'—'}. Как адаптировать: ${f.adapt||'—'}.\nФормат: первая строка «~N с · тема · CTA …», потом «АКТ 1 — Название (0–10 с)» и кадры «1. …», реплики в «ёлочках», в конце КАДРЫ:/ЦВЕТ:/ЗВУК:. Запиши в ideas (id = ${r.id}): core (мысль 1–2 строки), hook, script, status = 'Готов'.`,'ideas',r.id);S.iid=r.id;await loadHooks().catch(()=>{});go('idea')}else render()},n==='findScript'?'Идея создана, Сценарист пишет сценарий ✓':'В банке идей 💡');break}
 case 'findDrop':{const f=(D.finds||[]).find(x=>x.id===d.id);f.decision='Убрано';render();await guard(()=>upd('finds',f.id,{decision:'Убрано'}));break}
 /* бизнес */
 case 'bizStep':{const cur=Math.max(0,...(D.habits||[]).map(h=>+h.step_biz||0))+1;let h=(D.habits||[]).find(x=>x.day===t);await guard(async()=>{if(h){h.step_biz=cur;await upd('habits',h.id,{step_biz:cur})}else{h=await ins('habits',{day:t,step_biz:cur,step_blog:Math.max(0,...(D.habits||[]).map(x=>+x.step_blog||0))})}},'+5 XP · шаг '+cur+'/12');celebrate();render();break}
@@ -138,12 +153,13 @@ function copy(t){try{navigator.clipboard.writeText(t).then(()=>toast('Скопи
 /* события */
 document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;if(a.closest('#nudge'))$('#nudge').hidden=true;if(a.tagName==='A'&&!a.getAttribute('href'))e.preventDefault();e.stopPropagation();act(a.dataset.act,a)});
 document.addEventListener('focusout',e=>{if(['iScript','iHook','iTitle'].includes(e.target.id)&&S.view==='idea'){const i=(D.ideas||[]).find(x=>x.id===S.iid);saveIdea(i).catch(()=>{})}});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet()}
+document.addEventListener('keydown',e=>{if(S.shoot){if(e.key==='ArrowRight')act('shootN',{dataset:{d:'1'}});else if(e.key==='ArrowLeft')act('shootN',{dataset:{d:'-1'}});else if(e.key===' '){e.preventDefault();act('shootMark',{dataset:{}})}else if(e.key==='Escape')act('shootX',{dataset:{}});return}if(e.key==='Escape'){closeSheet()}
   const tp=/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable;
   if(!tp&&S.auth&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!S.sheet){const k=e.key.toLowerCase(),nv={'1':'today','2':'work','3':'goals','4':'me'}[k];if(nv){go(nv);return}if(k==='n'||k==='т'){e.preventDefault();act('add',e.target);return}if((k==='f'||k==='а')&&!S.focus){act('focus',{dataset:{}});return}}if(e.key==='Enter'&&e.target.id==='tmNew'){act('closeDay',e.target)}});
 
 /* старт */
 const T0=Date.now();function splashOff(ms){const el=$('#splash');if(!el||el.classList.contains('out'))return;setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),400)},ms===0?0:Math.max(0,700-(Date.now()-T0)))}
+let tx0=null;document.addEventListener('touchstart',e=>{if(S.shoot)tx0=e.touches[0].clientX},{passive:true});document.addEventListener('touchend',e=>{if(!S.shoot||tx0==null)return;const dx=e.changedTouches[0].clientX-tx0;tx0=null;if(Math.abs(dx)>60)act('shootN',{dataset:{d:dx<0?'1':'-1'}})},{passive:true});
 (function init(){
   S.conn=LS.get('conn',null);S.auth=LS.get('auth',null);
   if(/access_token/.test(location.hash)){const p=new URLSearchParams(location.hash.slice(1));saveSess({access_token:p.get('access_token'),refresh_token:p.get('refresh_token'),expires_in:p.get('expires_in')});S.needPass=true;history.replaceState(null,'',location.pathname)}
