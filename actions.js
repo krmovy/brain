@@ -1,0 +1,138 @@
+'use strict';
+/* ===== Мозг 3.0 · действия (всё сохраняется сразу в базу; рабочая таблица — через сервер) ===== */
+const guard=async(fn,ok)=>{try{await fn();if(ok)toast(ok)}catch(e){toast(errMsg(e));if(/row_not_found|row_ambiguous/.test(String(e&&e.message)))loadAll()}};
+const val=id=>{const e=document.getElementById(id);return e?e.value.trim():''};
+async function loadHooks(){if(!S.hooks)S.hooks=await sb('GET','hooks?select=*&order=category,code');return S.hooks}
+function sortCode(a,b){const n=s=>+String(s).split('-')[1]||0;return n(a.code)-n(b.code)}
+
+async function act(n,el){const d=el.dataset,t=today();
+switch(n){
+/* навигация */
+case 'go':go(d.v);break;
+case 'nav':go(d.v);break;
+case 'close':closeSheet();break;
+case 'refresh':toast('Обновляю…');closeSheet();loadAll();break;
+case 'settings':openSheet({type:'settings'});break;
+case 'goals':S.goals=d.v;render();break;
+case 'blogTab':S.blogTab=d.v;render();break;
+case 'mtab':S.mtab=d.v;render();break;
+case 'quest':{const q=quests()[+d.i];if(q.act==='meet'){S.mid=q.id;S.mtab='before';go('meet')}else if(q.act==='idea'&&q.id){S.iid=q.id;await loadHooks().catch(()=>{});go('idea')}else if(q.act==='goals'){S.goals=q.v;go('goals')}else go(q.v||'work');break}
+/* план дня */
+case 'planDel':S.plan.splice(+d.i,1);render();break;
+case 'planAdd':{const x=prompt('Что ещё главное сегодня?');if(x)S.plan.push({kind:'text',ref:'t'+Date.now(),t:x.trim(),why:'своё'});render();break}
+case 'planGo':await guard(()=>upsertDay(t,{top3:S.plan||[],planned:true}),'Погнали! 💪');S.plan=null;render();break;
+case 'topDone':{const dr=dayRec(t),x=dr.top3[+d.i];if(x.kind==='task')return act('taskDone',{dataset:{id:x.ref}});if(x.kind==='prom')return act('promDone',{dataset:{id:x.ref}});if(x.kind==='idea'){S.iid=x.ref;await loadHooks().catch(()=>{});return go('idea')}x.done=!x.done;await guard(()=>upsertDay(t,{top3:dr.top3}));if(x.done)celebrate();render();break}
+case 'topOpen':{const x=dayRec(t).top3[+d.i];if(x.kind==='task')openSheet({type:'task',id:x.ref});else if(x.kind==='idea'){S.iid=x.ref;await loadHooks().catch(()=>{});go('idea')}else if(x.kind==='prom')openSheet({type:'prom',id:x.ref});else focusStart(x.t,x.ref);break}
+/* задачи (рабочая таблица) */
+case 'taskOpen':openSheet({type:'task',id:d.id});break;
+case 'tSt':S.sheet.st=d.v;renderSheet();break;
+case 'taskDone':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x||!openT(x))return;if(!S.conn)return toast('Подключи сервер рабочей таблицы в ⚙️');x.status='Готово';x.updated=ru(new Date());celebrate();render();await guard(()=>setRow(C.SVC,'Задачи',{A:x.id},x.row_num,{H:'Готово',Q:ru(new Date())}),`${x.id} закрыта ✓ +25 XP`);levelCheck();break}
+case 'tSave':{const x=(D.tasks||[]).find(y=>y.id===S.sheet.id);if(!S.conn)return toast('Подключи сервер рабочей таблицы в ⚙️');const cells={},st=S.sheet.st,own=val('tOwner'),dl=val('tDl'),why=val('tWhy'),up=val('tUpd'),nx=val('tNext');
+  if(st&&st!==x.status)cells.H=st;if(own!==String(x.owner||''))cells.F=own;if(up!==String(x.week_upd||''))cells.M=up;if(nx!==String(x.next_step||''))cells.N=nx;
+  if(dl&&dl!==x.dl){if(!why)return toast('Укажи причину переноса');cells.J=toRu(dl);cells.K=(+x.dl_moves||0)+1;cells.M=`${short(t)}: DL ${x.dl?toRu(x.dl):'—'} → ${toRu(dl)}. ${why}`+(up?'\n'+up:'')}
+  if(!Object.keys(cells).length)return closeSheet();cells.Q=ru(new Date());
+  await guard(async()=>{await setRow(C.SVC,'Задачи',{A:x.id},x.row_num,cells);Object.assign(x,{status:cells.H||x.status,owner:cells.F!=null?cells.F:x.owner,week_upd:cells.M||x.week_upd,next_step:cells.N!=null?cells.N:x.next_step,dl:dl||x.dl,dl_moves:cells.K||x.dl_moves,updated:cells.Q});closeSheet();render()},'Сохранено в таблицу ✓');break}
+case 'ping':{const x=(D.tasks||[]).find(y=>y.id===d.id);if(!x)return;copy(`Привет, ${fname(x.owner)}! Как продвигается ${x.id} «${x.title}»?${x.dl?(x.dl<t?' DL был '+toRu(x.dl)+'.':' DL '+toRu(x.dl)+'.'):''} Если что-то блокирует — скажи, помогу разрулить.`);toast('Сообщение скопировано — вставь в чат');break}
+/* обещания */
+case 'promOpen':openSheet({type:'prom',id:d.id});break;
+case 'promDone':{const p=(D.promises||[]).find(y=>y.id===d.id);if(!p)return;p.status='Сделано';p.updated_at=new Date().toISOString();closeSheet();celebrate();render();await guard(()=>setRow(C.JB,'Обещания',{A:p.id},0,{I:'Сделано'}),'Обещание закрыто ✓');break}
+case 'promMove':{const p=(D.promises||[]).find(y=>y.id===d.id);p.due=addDays(t,1);closeSheet();render();await guard(()=>upd('promises',p.id,{due:p.due}),'Перенёс на завтра');break}
+/* встречи */
+case 'meet':S.mid=d.id;S.mtab=null;go('meet');break;
+case 'addMeet':S.addType='Встреча';openSheet({type:'add'});break;
+case 'meetPrep':{const m=(D.meetings||[]).find(x=>x.id===S.mid);await guard(()=>toAgent('Секретарь','Подготовка: '+m.title,`Подготовь меня к встрече «${m.title}» ${hm(m.start_at)}–${hm(m.end_at)}. Участники: ${m.people||'—'}${m.epic_id?'. Эпик '+m.epic_id:''}.\nВозьми из базы: мои открытые обещания этим людям (promises), открытые решения (work_decisions), задачи эпика (work_tasks). Формат: зачем я там, что обещал, 2–3 вопроса, что зафиксировать.\nГотовую подготовку запиши: update meetings set prep = $$…$$ where id = '${m.id}'.`,'meetings',m.id),'Отправил Секретарю — открой его чат');break}
+case 'meetSum':{const m=(D.meetings||[]).find(x=>x.id===S.mid),s=val('mSum');if(!s)return toast('Напиши или надиктуй резюме');m.summary=s;await guard(async()=>{await upd('meetings',m.id,{summary:s,status:'done'});await toAgent('Секретарь','Резюме: '+m.title,`Резюме встречи «${m.title}» (${m.day}, участники: ${m.people||'—'}${m.epic_id?', эпик '+m.epic_id:''}):\n${s}\n\nРазложи на решения и action items (строки для «Решения»), задачи и обещания (promises). Покажи строки и жди «да», потом запиши.`,'meetings',m.id)},'Сохранено и отправлено Секретарю ✓ +15 XP');celebrate();render();break}
+/* фокус */
+case 'focus':closeSheet();focusStart(d.t||'Фокус',d.ref);break;
+case 'fmin':S.focus.min=+d.n;LS.set('fmin',+d.n);S.focus.start=Date.now();S.focus.paused=0;renderFocus();break;
+case 'fpause':if(S.focus.paused){S.focus.start+=Date.now()-S.focus.paused;S.focus.paused=0}else S.focus.paused=Date.now();renderFocus();break;
+case 'fstop':S.focus=null;LS.set('focus',null);renderFocus();break;
+case 'fdone':{const f=S.focus,min=Math.max(1,Math.round(((f.paused||Date.now())-f.start)/60000));S.focus=null;LS.set('focus',null);renderFocus();celebrate();
+  await guard(()=>ins('focus_log',{day:t,minutes:min,title:f.title,ref_id:f.ref||null}),`Фокус ${min} мин записан ✓`);(D.focus=D.focus||[]);render();break}
+/* работа */
+case 'epic':S.eid=d.id;go('epic');break;
+case 'epicPri':{const e=(D.epics||[]).find(x=>x.id===S.eid);e.priority={P1:'P2',P2:'P3',P3:'P1'}[e.priority||'P2'];render();await guard(()=>upd('epics',e.id,{priority:e.priority}),'Важность: '+e.priority);break}
+case 'epicGoal':{const e=(D.epics||[]).find(x=>x.id===S.eid),g=prompt('Зачем этот эпик? Одна фраза — какой результат',e.goal||'');if(g===null)return;e.goal=g.trim();render();await guard(()=>upd('epics',e.id,{goal:e.goal}),'Цель сохранена');break}
+/* агенты */
+case 'ai':openSheet({type:'ai',a:d.a,t:d.t,ref:d.ref});setTimeout(()=>{const x=$('#aiT');if(x)x.focus()},60);break;
+case 'aiSend':{const s=S.sheet,tx=val('aiT');let ctx='';
+  if(s.ref){const i=(D.ideas||[]).find(x=>x.id===s.ref);if(i)ctx=`\nИдея «${i.title}» (ideas.id = ${i.id}). Хук: ${i.hook||'—'}. Сценарий:\n${i.script||i.notes||'—'}\nГотовый результат запиши в ideas.script (и hook, если меняешь).`}
+  const e=(D.epics||[]).find(x=>s.t.includes(x.id));if(e){const st=epicStat(e);ctx+=`\nЭпик ${e.id} «${e.name}». Цель: ${e.goal||'—'}. Прогресс ${st.dn.length}/${st.ts.length}, просрочено ${st.od.length}. Открытые: ${st.op.map(x=>x.id+' '+x.title+' ('+fname(x.owner)+', DL '+(x.dl?toRu(x.dl):'—')+')').join('; ')}`}
+  await guard(async()=>{await toAgent(s.a,s.t,s.t+(tx?'.\n'+tx:'')+ctx,s.ref?'ideas':e?'epics':null,s.ref||(e&&e.id)||null);closeSheet()},`Отправил → ${s.a}. Открой его чат в проекте Мозг`);break}
+case 'qOpen':openSheet({type:'queue',id:d.id});break;
+case 'copy':{const q=(D.queue||[]).find(x=>x.id===d.id);copy(q.result||'');break}
+/* блог */
+case 'idea':S.iid=d.id;await loadHooks().catch(()=>{});go('idea');break;
+case 'ideaNew':{const x=prompt('Идея ролика');if(!x)return;await guard(async()=>{const r=await ins('ideas',{title:x.trim(),kind:'Идея',status:'Идея',source:'Свой'});S.iid=r.id;go('idea')});break}
+case 'ideaSt':{const i=(D.ideas||[]).find(x=>x.id===S.iid);await saveIdea(i);i.status=d.s;i.updated_at=new Date().toISOString();if(d.s==='Вышел')celebrate(true);else celebrate();render();await guard(()=>upd('ideas',i.id,{status:d.s,published:d.s==='Вышел'?t:i.published}),'Статус: '+d.s);levelCheck();break}
+case 'ideaSave':{const i=(D.ideas||[]).find(x=>x.id===S.iid);await guard(()=>saveIdea(i,true),'Сохранено ✓');break}
+case 'hooks':{await loadHooks();const i=(D.ideas||[]).find(x=>x.id===S.iid);await saveIdea(i);openSheet({type:'hooks'});break}
+case 'hCat':S.sheet.cat=d.v;renderSheet();break;
+case 'hookPick':{const i=(D.ideas||[]).find(x=>x.id===S.iid),h=d.code&&(S.hooks||[]).find(x=>x.code===d.code);i.hook=h?h.text:d.text;i.hook_code=h?h.code:null;closeSheet();render();await guard(()=>upd('ideas',i.id,{hook:i.hook,hook_code:i.hook_code}),'Хук выбран — подставь своё в [скобки]');break}
+case 'findScript':case 'findBank':{const f=(D.finds||[]).find(x=>x.id===d.id);await guard(async()=>{const r=await ins('ideas',{title:f.title||'Идея из находки',kind:'Идея',status:'Идея',source:'Ресерчер',hook:f.hook||null,notes:f.adapt||null,ref:safeUrl(f.link)||null,topic:f.topic||null});f.decision='В банк';await upd('finds',f.id,{decision:'В банк'});
+  if(n==='findScript')await toAgent('Сценарист','Сценарий по находке: '+(f.title||''),`Напиши сценарий рилса 30–45 сек в стиле Ерназара по находке: ${f.title} (${f.link||''}). Почему залетело: ${f.why||'—'}. Как адаптировать: ${f.adapt||'—'}.\nЗапиши в ideas (id = ${r.id}): script, hook, status = 'Готов'.`,'ideas',r.id)},n==='findScript'?'В банке + отправил Сценаристу ✓':'В банке идей 💡');render();break}
+case 'findDrop':{const f=(D.finds||[]).find(x=>x.id===d.id);f.decision='Убрано';render();await guard(()=>upd('finds',f.id,{decision:'Убрано'}));break}
+/* бизнес */
+case 'bizStep':{const cur=Math.max(0,...(D.habits||[]).map(h=>+h.step_biz||0))+1;let h=(D.habits||[]).find(x=>x.day===t);await guard(async()=>{if(h){h.step_biz=cur;await upd('habits',h.id,{step_biz:cur})}else{h=await ins('habits',{day:t,step_biz:cur,step_blog:Math.max(0,...(D.habits||[]).map(x=>+x.step_blog||0))})}},'+5 XP · шаг '+cur+'/12');celebrate();render();break}
+case 'clNew':{const x=prompt('Компания');if(!x)return;await guard(()=>ins('clients',{company:x.trim(),stage:'Найден',touched:t}),'Клиент добавлен');render();break}
+case 'clNext':{const c=(D.clients||[]).find(x=>x.id===d.id),nx=CL_ST[Math.min(5,CL_ST.indexOf(c.stage||'Найден')+1)];const cols={stage:nx,touched:t};if(nx==='Оплатил'){const s=prompt('Сумма оплаты, ₸');if(s===null)return;cols.amount=+s||0;celebrate(true)}Object.assign(c,cols);render();await guard(()=>upd('clients',c.id,cols),'→ '+nx);break}
+case 'hypNew':{const x=prompt('Гипотеза: если …, то …');if(!x)return;await guard(()=>ins('hypotheses',{title:x.trim(),status:'Идея',start:t}),'Гипотеза добавлена');render();break}
+/* личное */
+case 'qDone':{const q=(D.quests||[]).find(x=>x.id===d.id);q.status=q.status==='Готово'?'В плане':'Готово';q.updated_at=new Date().toISOString();if(q.status==='Готово')celebrate(true);render();await guard(()=>upd('quests',q.id,{status:q.status}));levelCheck();break}
+case 'habit':{const on=(D.hmarks||[]).some(m=>m.habit_id===d.id&&m.day===t);await guard(async()=>{if(on){D.hmarks=D.hmarks.filter(m=>!(m.habit_id===d.id&&m.day===t));await sb('DELETE',`habit_marks?day=eq.${t}&habit_id=eq.${d.id}`,null,'return=minimal')}else{(D.hmarks=D.hmarks||[]).push({day:t,habit_id:d.id});await sb('POST','habit_marks',{day:t,habit_id:d.id},'return=minimal');celebrate()}});render();levelCheck();break}
+case 'habitNew':{const x=prompt('Новая привычка, например «🧘 Медитация 10 мин»');if(!x)return;const m=x.trim().match(/^(\p{Extended_Pictographic})\s*(.+)$/u);await guard(()=>ins('habit_defs',{name:m?m[2]:x.trim(),emoji:m?m[1]:'✨',sort:(D.hdefs||[]).length+1}).then(r=>{D.hdefs=(D.hdefs||[]);if(!D.hdefs.includes(r))D.hdefs.push(r)}),'Привычка добавлена');render();break}
+case 'money':{const x=prompt(d.k==='save'?'Сколько отложил в подушку, ₸':'Сколько потратил, ₸ (можно «5000 кафе»)');if(!x)return;const m=x.match(/([\d\s]+)\s*(.*)/);if(!m)return;await guard(()=>ins('money',{kind:d.k,amount:+m[1].replace(/\s/g,''),note:m[2]||null,day:t}),'Записал');render();break}
+case 'moneyGoal':{const x=prompt(d.k==='budget'?'Бюджет на месяц, ₸':'Цель подушки, ₸');if(!x)return;await guard(()=>ins('money',{kind:d.k,amount:+x.replace(/\D/g,''),day:t}),'Сохранено');render();break}
+/* я */
+case 'freeze':await guard(()=>upsertDay(addDays(t,-1),{freeze_used:true}),'🧊 Вчера заморожено — серия цела');render();break;
+case 'buy':{const s=(D.shop||[]).find(x=>x.id===d.id);if(s.bought)return;if(hero().coins<+s.price)return toast('Не хватает монет — ещё немного');s.bought=true;celebrate(true);render();await guard(()=>upd('shop',s.id,{bought:true}),'Награда твоя 🎁 Заслужил');break}
+case 'rewardNew':{const x=prompt('Награда (например «Вечер игр»)');if(!x)return;const p=prompt('Цена в монетах','150');await guard(()=>ins('shop',{title:x.trim(),price:+p||150}),'Награда добавлена');render();break}
+/* закрыть день */
+case 'tail':case 'tailsAll':{const dr=dayRec(t),tm=dayRec(addDays(t,1)),tails=(dr.top3||[]).filter(x=>!top3Done(x)),mv=n==='tail'?[tails[+d.i]]:tails;await guard(()=>upsertDay(addDays(t,1),{top3:(tm.top3||[]).concat(mv.filter(x=>!(tm.top3||[]).some(y=>y.ref===x.ref))).slice(0,3)}),'Перенёс на завтра');render();break}
+case 'closeDay':{const note=val('jNote'),nw=val('tmNew');await guard(async()=>{if(nw){const tm=dayRec(addDays(t,1));await upsertDay(addDays(t,1),{top3:(tm.top3||[]).concat([{kind:'text',ref:'t'+Date.now(),t:nw,why:'план'}]).slice(0,3)})}
+  await upsertDay(t,{closed:true,note});if(note)await appendRow(C.JB,'Журнал!A1',['L'+Date.now().toString(36).slice(-6).toUpperCase(),ru(new Date()),'','','Итог дня',note,'','Мозг',''])});celebrate(true);toast('День закрыт 🌙 +30 XP · серия '+streak());go('today');levelCheck();break}
+/* «+» */
+case 'add':openSheet({type:'add'});setTimeout(()=>{const x=$('#addT');if(x)x.focus()},60);break;
+case 'addType':S.addType=d.v;{const v=val('addT');renderSheet();$('#addT').value=v}break;
+case 'addSph':S.addSph=d.v;{const v=val('addT');renderSheet();$('#addT').value=v}break;
+case 'addDir':S.addDir=d.v;{const v=val('addT');renderSheet();$('#addT').value=v}break;
+case 'addSave':{const tx=val('addT'),ty=S.addType||'Задача';if(!tx)return toast('Напиши пару слов');
+  await guard(async()=>{
+    if(ty==='Задача')await ins('quests',{title:tx,sphere:S.addSph||'Личная жизнь',kind:'Задача',status:'В плане',due:t});
+    else if(ty==='Обещание'){const id='P'+Date.now().toString(36).slice(-5).toUpperCase();await appendRow(C.JB,'Обещания!A1',[id,ru(new Date()),S.addDir||'Я обещал',val('addWho'),tx,val('addDue')?toRu(val('addDue')):'','','','Открыт','']);(D.promises=D.promises||[]).push({id,day:t,direction:S.addDir||'Я обещал',person:val('addWho'),what:tx,due:val('addDue')||null,status:'Открыт'})}
+    else if(ty==='Встреча'){const tm=val('addTime')||'12:00',st=new Date(t+'T'+tm+':00');await ins('meetings',{day:t,start_at:st.toISOString(),end_at:new Date(st.getTime()+30*6e4).toISOString(),title:tx,people:val('addWho'),source:'manual'})}
+    else if(ty==='Идея ролика')await ins('ideas',{title:tx,kind:'Идея',status:'Идея',source:'Свой'});
+    else if(ty==='Клиент')await ins('clients',{company:tx,stage:'Найден',touched:t});
+    else await appendRow(C.JB,'Журнал!A1',['L'+Date.now().toString(36).slice(-6).toUpperCase(),ru(new Date()),'','','',tx,'','Мозг','']);
+    closeSheet();render()},'Сохранил ✓');break}
+case 'voice':{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return toast('Нажми 🎤 на клавиатуре телефона');const r=new R();r.lang='ru-RU';r.continuous=true;r.onresult=e=>{const x=document.getElementById(d.t);if(x)x.value=(x.value?x.value+' ':'')+Array.from(e.results).slice(e.resultIndex).map(z=>z[0].transcript).join(' ')};r.onerror=()=>toast('Не расслышал');r.start();toast('Говори…');break}
+/* вход и сервер */
+case 'passLogin':{const em=val('lEmail').toLowerCase(),pw=$('#lPass').value;if(!em||!pw)return toast('Почта и пароль');try{saveSess(await sbAuth('token?grant_type=password',{email:em,password:pw}));LS.set('email',em);render();loadAll()}catch(e){toast('Неверная почта или пароль')}break}
+case 'sendLink':{const em=val('lEmail').toLowerCase();if(!/\S+@\S+\.\S+/.test(em))return toast('Введи почту');try{await sbAuth('otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{email:em,create_user:true});S.otp=em;LS.set('email',em);render()}catch(e){toast('Не отправилось, попробуй через минуту')}break}
+case 'otpBack':S.otp=null;render();break;
+case 'setPass':{const pw=$('#lPass1').value;if(!pw||pw.length<8)return toast('Не меньше 8 знаков');try{const r=await fetch(SB.url+'/auth/v1/user',{method:'PUT',headers:{apikey:SB.key,Authorization:'Bearer '+await token(),'Content-Type':'application/json'},body:JSON.stringify({password:pw})});if(!r.ok)throw 0;S.needPass=false;render();loadAll()}catch(e){toast('Не сохранилось')}break}
+case 'connect':{const url=val('cUrl'),key=val('cKey');if(!/\/exec$/.test(url)||!key)return toast('Ссылка /exec и ключ');try{S.conn={url,key};await api([{action:'ping'}]);LS.set('conn',S.conn);toast('Сервер подключён ✓');closeSheet()}catch(e){S.conn=null;toast('Не подключилось — проверь ссылку и ключ')}break}
+case 'logout':closeSheet();logout();break;
+}}
+async function saveIdea(i,force){if(!i)return;const cols={},tt=val('iTitle'),hk=val('iHook'),sc=document.getElementById('iScript')?document.getElementById('iScript').value:null;
+  if(tt&&tt!==i.title)cols.title=tt;if(document.getElementById('iHook')&&hk!==String(i.hook||''))cols.hook=hk;if(sc!=null&&sc!==String(i.script||i.notes||''))cols.script=sc;
+  if(!Object.keys(cols).length&&!force)return;if(Object.keys(cols).length){if(!['Пишу','Готов','Снимаю','Снято','Монтаж','Вышел'].includes(i.status)&&cols.script)cols.status='Пишу';Object.assign(i,cols);i.updated_at=new Date().toISOString();await upd('ideas',i.id,cols)}}
+function copy(t){try{navigator.clipboard.writeText(t).then(()=>toast('Скопировано'),()=>toast('Не удалось скопировать'))}catch(e){toast('Не удалось скопировать')}}
+
+/* события */
+document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;if(a.tagName==='A'&&!a.getAttribute('href'))e.preventDefault();e.stopPropagation();act(a.dataset.act,a)});
+document.addEventListener('focusout',e=>{if(['iScript','iHook','iTitle'].includes(e.target.id)&&S.view==='idea'){const i=(D.ideas||[]).find(x=>x.id===S.iid);saveIdea(i).catch(()=>{})}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet()}if(e.key==='Enter'&&e.target.id==='tmNew'){act('closeDay',e.target)}});
+
+/* старт */
+(function init(){
+  S.conn=LS.get('conn',null);S.auth=LS.get('auth',null);
+  if(/access_token/.test(location.hash)){const p=new URLSearchParams(location.hash.slice(1));saveSess({access_token:p.get('access_token'),refresh_token:p.get('refresh_token'),expires_in:p.get('expires_in')});S.needPass=true;history.replaceState(null,'',location.pathname)}
+  const h=(location.hash||'').slice(1);if(VIEWS[h]&&!['epic','idea','meet'].includes(h))S.view=h;
+  const c=LS.get('cache3',null);if(c&&c.D){Object.assign(D,c.D);S.syncedAt=c.at}
+  S.focus=LS.get('focus',null);render();renderFocus();
+  if(S.auth)loadAll();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.auth&&Date.now()-(S.syncedAt||0)>60000)loadAll()});
+  setInterval(()=>{const dk=night();if(dk!==document.body.classList.contains('dark'))render()},60000);
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
